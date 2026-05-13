@@ -1,4 +1,4 @@
-name: 每日更新基金淨值
+name: updatanav
 
 on:
   schedule:
