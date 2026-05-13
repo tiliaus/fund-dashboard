@@ -257,9 +257,9 @@ fetch('data/nav.json')
   .then(json => {
     const lastUpdated = json.last_updated || '';
     holdingsData    = json.holdings || {};
-    holdingsUpdated = json.holdings_updated || '';
+    holdingsUpdated = json.holdings_date || json.holdings_updated || '';
     document.getElementById('statusMsg').textContent =
-      `淨值更新至 ${lastUpdated}　持股 ${holdingsUpdated || '待更新'}　每日自動更新`;
+      `淨值更新至 ${lastUpdated}　持股資料日期 ${holdingsUpdated || '待更新'}　每日自動更新`;
     // 過濾掉非淨值的鍵
     const exclude = new Set(['last_updated', 'holdings_updated', 'holdings']);
     fundData = Object.fromEntries(Object.entries(json).filter(([k]) => !exclude.has(k)));
