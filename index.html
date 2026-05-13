@@ -7,55 +7,32 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-      background: #f8f7f4;
-      color: #2C2C2A;
-      min-height: 100vh;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: #f8f7f4; color: #2C2C2A; min-height: 100vh; }
     .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
-
     .status-bar { font-size: 11px; color: #888780; margin-bottom: 1.25rem; }
-
     .header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 1.5rem; }
     .header-title { font-size: 20px; font-weight: 500; }
     .header-sub { font-size: 12px; color: #5F5E5A; margin-top: 4px; }
-
     .period-btns { display: flex; gap: 4px; align-items: center; }
-    .period-btn {
-      padding: 6px 14px; font-size: 12px; border-radius: 8px;
-      border: 0.5px solid rgba(0,0,0,0.2); background: none;
-      cursor: pointer; color: #5F5E5A; transition: all 0.15s;
-    }
+    .period-btn { padding: 6px 14px; font-size: 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.2); background: none; cursor: pointer; color: #5F5E5A; transition: all 0.15s; }
     .period-btn.active { background: rgba(0,0,0,0.07); color: #2C2C2A; font-weight: 500; }
-
     .tabs { display: flex; border-bottom: 0.5px solid rgba(0,0,0,0.15); margin-bottom: 1.25rem; }
-    .tab-btn {
-      padding: 8px 16px; font-size: 13px; background: none; border: none;
-      border-bottom: 2px solid transparent; cursor: pointer; color: #5F5E5A; margin-bottom: -1px;
-    }
+    .tab-btn { padding: 8px 16px; font-size: 13px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; color: #5F5E5A; margin-bottom: -1px; }
     .tab-btn.active { border-bottom-color: #2C2C2A; color: #2C2C2A; font-weight: 500; }
-
     .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 1rem; font-size: 12px; }
     .legend-item { display: flex; align-items: center; gap: 5px; }
     .legend-line { width: 18px; height: 2px; display: inline-block; flex-shrink: 0; }
-
     .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 1.25rem; }
-    .metric-card {
-      background: rgba(0,0,0,0.04);
-      border-left: 3px solid #ccc;
-      border-radius: 0;
-      padding: 10px 12px;
-    }
+    .metric-card { background: rgba(0,0,0,0.04); border-left: 3px solid #ccc; border-radius: 0; padding: 10px 12px; }
     .metric-label { font-size: 11px; color: #5F5E5A; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .metric-value { font-size: 19px; font-weight: 500; }
     .metric-nav { font-size: 10px; color: #888780; margin-top: 2px; }
-
     .chart-wrap { position: relative; height: 300px; margin-bottom: 0.5rem; }
-
     .holdings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .holding-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 1rem 1.25rem; }
-    .holding-title { font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+    .holding-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .holding-title { font-size: 13px; font-weight: 500; }
+    .holding-date { font-size: 11px; color: #888780; }
     .holding-body { display: flex; align-items: center; gap: 14px; }
     .pie-wrap { position: relative; width: 130px; height: 130px; flex-shrink: 0; }
     .pie-legend { flex: 1; font-size: 11px; }
@@ -63,9 +40,7 @@
     .pie-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
     .pie-name { flex: 1; color: #5F5E5A; }
     .pie-pct { font-weight: 500; }
-
     .footnote { font-size: 11px; color: #888780; margin-top: 10px; }
-
     @media (max-width: 600px) {
       .container { padding: 1.25rem 1rem; }
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -76,7 +51,6 @@
 <body>
 <div class="container">
   <div class="status-bar" id="statusMsg">載入中…</div>
-
   <div class="header">
     <div>
       <div class="header-title">基金淨值走勢比較</div>
@@ -84,12 +58,10 @@
     </div>
     <div class="period-btns" id="periodBtns"></div>
   </div>
-
   <div class="tabs">
     <button class="tab-btn active" id="tabChart" onclick="switchTab('chart')">走勢比較</button>
     <button class="tab-btn" id="tabHoldings" onclick="switchTab('holdings')">持股分配</button>
   </div>
-
   <div id="chartSection">
     <div class="legend" id="legend"></div>
     <div class="metrics" id="metrics"></div>
@@ -97,175 +69,97 @@
       <canvas id="lineChart" role="img" aria-label="四檔基金淨值相對報酬走勢折線圖"></canvas>
     </div>
   </div>
-
   <div id="holdingsSection" style="display:none;">
     <div class="holdings-grid" id="holdingsGrid"></div>
-    <p class="footnote">＊持股資料為示意數據，實際配置請參閱各基金公司公告</p>
+    <p class="footnote">＊持股資料來源：MoneyDJ，每月自動更新</p>
   </div>
 </div>
-
 <script>
-const FUND_KEYS = ['安聯台灣科技','安聯台灣大壩','統一奔騰','統一黑馬'];
-const COLORS = {'安聯台灣科技':'#378ADD','安聯台灣大壩':'#1D9E75','統一奔騰':'#BA7517','統一黑馬':'#D4537E'};
-const PIE_CLR = ['#378ADD','#1D9E75','#EF9F27','#D4537E','#9F77DD','#B4B2A9'];
-let holdingsData = {};    // 從 nav.json 載入的真實持股資料
-let holdingsUpdated = ''; // 持股資料更新月份
+const FUND_KEYS=['安聯台灣科技','安聯台灣大壩','統一奔騰','統一黑馬'];
+const COLORS={'安聯台灣科技':'#378ADD','安聯台灣大壩':'#1D9E75','統一奔騰':'#BA7517','統一黑馬':'#D4537E'};
+const PIE_CLR=['#378ADD','#1D9E75','#EF9F27','#D4537E','#9F77DD','#B4B2A9'];
+let holdingsData={},fundData=null,currentPeriod='1Y',lineInst=null,holdingsInit=false;
 
-let fundData = null, currentPeriod = '1Y', lineInst = null, holdingsInit = false;
+function cutoffStr(months){const d=new Date();if(months===12)d.setFullYear(d.getFullYear()-1);else d.setMonth(d.getMonth()-months);return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
 
-function cutoffStr(months) {
-  const d = new Date();
-  if (months === 12) d.setFullYear(d.getFullYear() - 1);
-  else d.setMonth(d.getMonth() - months);
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+function getSliceDates(period){const months={'3M':3,'6M':6,'1Y':12};const cut=cutoffStr(months[period]);const all=new Set();FUND_KEYS.forEach(f=>Object.keys(fundData[f]||{}).forEach(d=>{if(d>=cut)all.add(d);}));return[...all].sort();}
+
+function buildChart(period){
+  const dates=getSliceDates(period);
+  const baseNav={};
+  FUND_KEYS.forEach(f=>{const fd=dates.find(d=>fundData[f][d]!=null);baseNav[f]=fd?fundData[f][fd]:null;});
+  const datasets=FUND_KEYS.map(f=>({label:f,data:dates.map(d=>{const v=fundData[f][d];if(!v||!baseNav[f])return null;return+((v/baseNav[f])*100).toFixed(2);}),borderColor:COLORS[f],borderWidth:2,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:COLORS[f],fill:false,tension:0.3,spanGaps:true}));
+  const maxT=period==='1Y'?13:period==='6M'?7:13;
+  if(lineInst)lineInst.destroy();
+  lineInst=new Chart(document.getElementById('lineChart'),{type:'line',data:{labels:dates.map(d=>d.slice(5)),datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#2C2C2A',bodyColor:'#5F5E5A',borderColor:'#D3D1C7',borderWidth:1,padding:10,callbacks:{label:ctx=>{if(ctx.raw==null)return'';const v=(ctx.raw-100).toFixed(2);return` ${ctx.dataset.label}: ${v>=0?'+':''}${v}%`;}}}},scales:{x:{grid:{display:false},border:{color:'#D3D1C7'},ticks:{color:'#888780',font:{size:11},maxTicksLimit:maxT,maxRotation:0}},y:{grid:{color:'rgba(0,0,0,0.05)'},border:{display:false},ticks:{color:'#888780',font:{size:11},callback:v=>{const d=Math.round(v-100);return(d>=0?'+':'')+d+'%';}}}}}});
+  updateLegend(dates,baseNav);updateMetrics(dates,baseNav);
 }
 
-function getSliceDates(period) {
-  const months = {'3M':3,'6M':6,'1Y':12};
-  const cut = cutoffStr(months[period]);
-  const all = new Set();
-  FUND_KEYS.forEach(f => Object.keys(fundData[f]||{}).forEach(d => { if (d >= cut) all.add(d); }));
-  return [...all].sort();
-}
-
-function buildChart(period) {
-  const dates = getSliceDates(period);
-  const baseNav = {};
-  FUND_KEYS.forEach(f => { const fd = dates.find(d => fundData[f][d] != null); baseNav[f] = fd ? fundData[f][fd] : null; });
-
-  const datasets = FUND_KEYS.map(f => ({
-    label: f,
-    data: dates.map(d => { const v = fundData[f][d]; if (!v || !baseNav[f]) return null; return +((v/baseNav[f])*100).toFixed(2); }),
-    borderColor: COLORS[f], borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
-    pointHoverBackgroundColor: COLORS[f], fill: false, tension: 0.3, spanGaps: true
-  }));
-
-  const maxT = period === '1Y' ? 13 : period === '6M' ? 7 : 13;
-  if (lineInst) lineInst.destroy();
-  lineInst = new Chart(document.getElementById('lineChart'), {
-    type: 'line', data: { labels: dates.map(d => d.slice(5)), datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#fff', titleColor: '#2C2C2A', bodyColor: '#5F5E5A',
-          borderColor: '#D3D1C7', borderWidth: 1, padding: 10,
-          callbacks: { label: ctx => { if (ctx.raw == null) return ''; const v = (ctx.raw-100).toFixed(2); return ` ${ctx.dataset.label}: ${v>=0?'+':''}${v}%`; } }
-        }
-      },
-      scales: {
-        x: { grid:{display:false}, border:{color:'#D3D1C7'}, ticks:{color:'#888780',font:{size:11},maxTicksLimit:maxT,maxRotation:0} },
-        y: { grid:{color:'rgba(0,0,0,0.05)'}, border:{display:false}, ticks:{color:'#888780',font:{size:11},callback:v=>{const d=Math.round(v-100);return(d>=0?'+':'')+d+'%';}} }
-      }
-    }
-  });
-  updateLegend(dates, baseNav);
-  updateMetrics(dates, baseNav);
-}
-
-function updateLegend(dates, baseNav) {
-  document.getElementById('legend').innerHTML = FUND_KEYS.map(f => {
-    const lastDate = dates.filter(d => fundData[f][d] != null).pop();
-    const last = lastDate ? fundData[f][lastDate] : null;
-    if (!last || !baseNav[f]) return '';
-    const ret = ((last/baseNav[f]-1)*100).toFixed(2);
-    const clr = ret >= 0 ? '#1D9E75' : '#E24B4A';
-    return `<span class="legend-item">
-      <span class="legend-line" style="background:${COLORS[f]};"></span>
-      <span style="color:#5F5E5A;">${f}</span>
-      <span style="color:${clr};font-weight:500;">${ret>=0?'+':''}${ret}%</span>
-    </span>`;
+function updateLegend(dates,baseNav){
+  document.getElementById('legend').innerHTML=FUND_KEYS.map(f=>{
+    const lastDate=dates.filter(d=>fundData[f][d]!=null).pop();const last=lastDate?fundData[f][lastDate]:null;
+    if(!last||!baseNav[f])return'';
+    const ret=((last/baseNav[f]-1)*100).toFixed(2);const clr=ret>=0?'#1D9E75':'#E24B4A';
+    return`<span class="legend-item"><span class="legend-line" style="background:${COLORS[f]};"></span><span style="color:#5F5E5A;">${f}</span><span style="color:${clr};font-weight:500;">${ret>=0?'+':''}${ret}%</span></span>`;
   }).join('');
 }
 
-function updateMetrics(dates, baseNav) {
-  document.getElementById('metrics').innerHTML = FUND_KEYS.map(f => {
-    const lastDate = dates.filter(d => fundData[f][d] != null).pop();
-    const last = lastDate ? fundData[f][lastDate] : null;
-    if (!last || !baseNav[f]) return `<div class="metric-card" style="border-left-color:${COLORS[f]};"><div class="metric-label">${f}</div><div class="metric-value" style="color:#888;">N/A</div></div>`;
-    const ret = (last/baseNav[f]-1)*100;
-    const clr = ret >= 0 ? '#1D9E75' : '#E24B4A';
-    return `<div class="metric-card" style="border-left-color:${COLORS[f]};">
-      <div class="metric-label">${f}</div>
-      <div class="metric-value" style="color:${clr};">${ret>=0?'+':''}${ret.toFixed(1)}%</div>
-      <div class="metric-nav">淨值 ${last.toFixed(2)}</div>
-    </div>`;
+function updateMetrics(dates,baseNav){
+  document.getElementById('metrics').innerHTML=FUND_KEYS.map(f=>{
+    const lastDate=dates.filter(d=>fundData[f][d]!=null).pop();const last=lastDate?fundData[f][lastDate]:null;
+    if(!last||!baseNav[f])return`<div class="metric-card" style="border-left-color:${COLORS[f]};"><div class="metric-label">${f}</div><div class="metric-value" style="color:#888;">N/A</div></div>`;
+    const ret=(last/baseNav[f]-1)*100;const clr=ret>=0?'#1D9E75':'#E24B4A';
+    return`<div class="metric-card" style="border-left-color:${COLORS[f]};"><div class="metric-label">${f}</div><div class="metric-value" style="color:${clr};">${ret>=0?'+':''}${ret.toFixed(1)}%</div><div class="metric-nav">淨值 ${last.toFixed(2)}</div></div>`;
   }).join('');
 }
 
-function setPeriod(p) {
-  currentPeriod = p;
-  document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === p));
-  buildChart(p);
+function setPeriod(p){currentPeriod=p;document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',b.dataset.period===p));buildChart(p);}
+
+function switchTab(tab){
+  const cs=document.getElementById('chartSection'),hs=document.getElementById('holdingsSection');
+  const tc=document.getElementById('tabChart'),th=document.getElementById('tabHoldings');
+  if(tab==='chart'){cs.style.display='';hs.style.display='none';tc.classList.add('active');th.classList.remove('active');}
+  else{cs.style.display='none';hs.style.display='';th.classList.add('active');tc.classList.remove('active');if(!holdingsInit){buildHoldings();holdingsInit=true;}}
 }
 
-function switchTab(tab) {
-  const cs = document.getElementById('chartSection'), hs = document.getElementById('holdingsSection');
-  const tc = document.getElementById('tabChart'), th = document.getElementById('tabHoldings');
-  if (tab === 'chart') {
-    cs.style.display = ''; hs.style.display = 'none'; tc.classList.add('active'); th.classList.remove('active');
-  } else {
-    cs.style.display = 'none'; hs.style.display = ''; th.classList.add('active'); tc.classList.remove('active');
-    if (!holdingsInit) { buildHoldings(); holdingsInit = true; }
-  }
-}
-
-function buildHoldings() {
-  const updatedLabel = holdingsUpdated ? `資料日期：${holdingsUpdated}` : '持股資料載入中…';
-  document.getElementById('holdingsGrid').innerHTML = FUND_KEYS.map((f, i) => `
-    <div class="holding-card">
-      <div class="holding-title">${f}</div>
+function buildHoldings(){
+  document.getElementById('holdingsGrid').innerHTML=FUND_KEYS.map((f,i)=>{
+    const fd=holdingsData[f];
+    const hDate=Array.isArray(fd)?'':(fd?.date||'');
+    return`<div class="holding-card">
+      <div class="holding-header">
+        <div class="holding-title">${f}</div>
+        ${hDate?`<div class="holding-date">資料月份：${hDate}</div>`:''}
+      </div>
       <div class="holding-body">
         <div class="pie-wrap"><canvas id="pie${i}" role="img" aria-label="${f}持股分配"></canvas></div>
         <div class="pie-legend" id="lg${i}"></div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
-  FUND_KEYS.forEach((f, i) => {
-    // 優先使用 nav.json 的真實持股，若無則顯示提示
-    const raw = holdingsData[f];
-    const d = raw && raw.length > 0
-      ? raw.map(h => ({ n: h.name, p: h.pct }))
-      : [{ n: '資料未載入', p: 100 }];
-
-    new Chart(document.getElementById('pie'+i), {
-      type: 'doughnut',
-      data: { labels: d.map(x=>x.n), datasets: [{ data: d.map(x=>x.p), backgroundColor: PIE_CLR, borderWidth: 0, hoverOffset: 4 }] },
-      options: { responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{ legend:{display:false}, tooltip:{backgroundColor:'#fff',titleColor:'#2C2C2A',bodyColor:'#5F5E5A',borderColor:'#D3D1C7',borderWidth:1,padding:8,callbacks:{label:c=>` ${c.label}: ${c.raw}%`}} } }
-    });
-    document.getElementById('lg'+i).innerHTML = d.map((x,j) => `
-      <div class="pie-row">
-        <span class="pie-dot" style="background:${PIE_CLR[j]};"></span>
-        <span class="pie-name">${x.n}</span>
-        <span class="pie-pct">${x.p}%</span>
-      </div>`).join('');
+  FUND_KEYS.forEach((f,i)=>{
+    const raw=holdingsData[f];
+    const dataList=Array.isArray(raw)?raw:(raw?.data||[]);
+    const d=dataList.length>0?dataList.map(h=>({n:h.name,p:h.pct})):[{n:'資料未載入',p:100}];
+    new Chart(document.getElementById('pie'+i),{type:'doughnut',data:{labels:d.map(x=>x.n),datasets:[{data:d.map(x=>x.p),backgroundColor:PIE_CLR,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#2C2C2A',bodyColor:'#5F5E5A',borderColor:'#D3D1C7',borderWidth:1,padding:8,callbacks:{label:c=>` ${c.label}: ${c.raw}%`}}}}});
+    document.getElementById('lg'+i).innerHTML=d.map((x,j)=>`<div class="pie-row"><span class="pie-dot" style="background:${PIE_CLR[j]};"></span><span class="pie-name">${x.n}</span><span class="pie-pct">${x.p}%</span></div>`).join('');
   });
-
-  // 顯示持股資料日期
-  const note = document.querySelector('#holdingsSection .footnote');
-  if (note) note.textContent = `＊${updatedLabel}，每月自動更新`;
 }
 
-document.getElementById('periodBtns').innerHTML = [['3M','3個月'],['6M','6個月'],['1Y','1年']].map(([k,l]) =>
-  `<button class="period-btn${k==='1Y'?' active':''}" data-period="${k}" onclick="setPeriod('${k}')">${l}</button>`
-).join('');
+document.getElementById('periodBtns').innerHTML=[['3M','3個月'],['6M','6個月'],['1Y','1年']].map(([k,l])=>`<button class="period-btn${k==='1Y'?' active':''}" data-period="${k}" onclick="setPeriod('${k}')">${l}</button>`).join('');
 
-fetch('data/nav.json?t=' + Date.now())
-  .then(r => r.json())
-  .then(json => {
-    const lastUpdated = json.last_updated || '';
-    holdingsData    = json.holdings || {};
-    holdingsUpdated = json.holdings_date || json.holdings_updated || '';
-    document.getElementById('statusMsg').textContent =
-      `淨值更新至 ${lastUpdated}　持股資料日期 ${holdingsUpdated || '待更新'}　每日自動更新`;
-    // 過濾掉非淨值的鍵
-    const exclude = new Set(['last_updated', 'holdings_updated', 'holdings']);
-    fundData = Object.fromEntries(Object.entries(json).filter(([k]) => !exclude.has(k)));
+fetch('data/nav.json?t='+Date.now())
+  .then(r=>r.json())
+  .then(json=>{
+    const lastUpdated=json.last_updated||'';
+    holdingsData=json.holdings||{};
+    document.getElementById('statusMsg').textContent=`淨值更新至 ${lastUpdated}　每日自動更新`;
+    const exclude=new Set(['last_updated','holdings_updated','holdings_date','holdings']);
+    fundData=Object.fromEntries(Object.entries(json).filter(([k])=>!exclude.has(k)));
     buildChart('1Y');
   })
-  .catch(() => { document.getElementById('statusMsg').textContent = '載入資料失敗，請重新整理頁面'; });
+  .catch(()=>{document.getElementById('statusMsg').textContent='載入資料失敗，請重新整理頁面';});
 </script>
 </body>
 </html>
