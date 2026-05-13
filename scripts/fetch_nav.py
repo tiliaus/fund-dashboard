@@ -117,13 +117,26 @@ def parse_holdings(code):
     """
     soup = fetch(HOLDINGS_URL.format(code))
 
-    # 找資料日期
+    # 找投資明細之後的資料日期
+    # 先找到持股表格的位置，再往後找資料日期
     data_date = ''
-    for td in soup.find_all('td'):
-        txt = td.get_text(strip=True)
-        m = re.search(r'資料日期[：:]\s*(\d{4}/\d{2}/\d{2})', txt)
-        if m:
-            data_date = m.group(1)
+    tables = soup.find_all('table')
+    holdings_table_idx = -1
+    for i, table in enumerate(tables):
+        header = [td.get_text(strip=True) for td in (table.find('tr') or []).find_all(['td','th'])] if table.find('tr') else []
+        if '投資名稱' in header and '比例' in header:
+            holdings_table_idx = i
+            break
+
+    # 在持股表格之後的表格中找資料日期
+    search_tables = tables[holdings_table_idx+1:] if holdings_table_idx >= 0 else tables
+    for table in search_tables:
+        for td in table.find_all('td'):
+            m = re.search(r'資料日期[：:]\s*(\d{4}/\d{2}/\d{2})', td.get_text(strip=True))
+            if m:
+                data_date = m.group(1)
+                break
+        if data_date:
             break
 
     # 找持股表格（標題含「投資名稱」且有 8 欄）
