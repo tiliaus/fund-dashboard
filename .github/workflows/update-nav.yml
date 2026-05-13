@@ -3,7 +3,7 @@ name: 每日更新基金淨值
 on:
   schedule:
     # 台灣時間 22:00（UTC 14:00），週一至週五執行
-    - cron: '0 14 * * 1-5'
+    - cron: '0 12 * * 1-5'
   workflow_dispatch:
 
 jobs:
