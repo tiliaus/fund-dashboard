@@ -25,7 +25,7 @@ jobs:
         run: pip install requests beautifulsoup4
 
       - name: Fetch NAV and holdings
-        run: python debug_moneydj.py
+        run: python scripts/fetch_nav.py
 
       - name: Commit and push if data changed
         run: |
