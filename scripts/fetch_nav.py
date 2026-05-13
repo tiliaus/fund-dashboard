@@ -223,7 +223,7 @@ def main():
                     holdings_ok.append(fund)
                     top3 = ', '.join(f'{h["name"]}({h["pct"]}%)' for h in holdings[:3])
                     print(f'    持股 ✓  {len(holdings)} 筆（資料日期 {h_date}）：{top3}…')
-                    if h_date and not data.get('holdings_date'):
+                    if h_date:
                         data['holdings_date'] = h_date
                 else:
                     # 保留舊資料
