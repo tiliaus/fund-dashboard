@@ -252,7 +252,7 @@ document.getElementById('periodBtns').innerHTML = [['3M','3個月'],['6M','6個�
   `<button class="period-btn${k==='1Y'?' active':''}" data-period="${k}" onclick="setPeriod('${k}')">${l}</button>`
 ).join('');
 
-fetch('data/nav.json')
+fetch('data/nav.json?t=' + Date.now())
   .then(r => r.json())
   .then(json => {
     const lastUpdated = json.last_updated || '';
