@@ -196,10 +196,17 @@ def main():
         if need_nav:
             try:
                 nav, nav_date = parse_nav(code)
-                if nav:
-                    data.setdefault(fund, {})[today] = nav
-                    nav_ok.append(f'{fund}: {nav}（{nav_date}）')
-                    print(f'    淨值 ✓  {nav}（{nav_date}）')
+                if nav and nav_date:
+                    fund_data = data.setdefault(fund, {})
+                    if nav_date in fund_data:
+                        # MoneyDJ 最新日期已存在 → 今日淨值尚未公布，略過
+                        print(f'    淨值 ✗  MoneyDJ 最新為 {nav_date}（已存），今日淨值尚未公布')
+                        nav_fail.append(fund)
+                    else:
+                        # 新日期 → 以 MoneyDJ 回傳的日期存入
+                        fund_data[nav_date] = nav
+                        nav_ok.append(f'{fund}: {nav}（{nav_date}）')
+                        print(f'    淨值 ✓  {nav}（{nav_date}）')
                 else:
                     nav_fail.append(fund)
                     print(f'    淨值 ✗  找不到')
