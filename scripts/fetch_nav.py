@@ -55,8 +55,15 @@ def load_nav():
         return json.load(f)
 
 def save_nav(data):
+    # 儲存前將每檔基金的日期由新到舊排序
+    sorted_data = {}
+    for k, v in data.items():
+        if isinstance(v, dict) and k in FUND_KEYS:
+            sorted_data[k] = dict(sorted(v.items(), reverse=True))
+        else:
+            sorted_data[k] = v
     with open(NAV_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(sorted_data, f, ensure_ascii=False, indent=2)
 
 def trim_old_nav(data):
     cutoff = one_year_ago()
