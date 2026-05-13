@@ -1,6 +1,5 @@
 """
-debug_moneydj.py — 檢查 MoneyDJ 頁面 HTML 結構
-在 GitHub Actions 執行，輸出關鍵 HTML 片段幫助找出正確的 NAV 和持股位置
+debug_moneydj_v3.py — 檢查淨值頁和持股頁的正確 HTML 結構
 """
 import requests
 from bs4 import BeautifulSoup
@@ -20,54 +19,52 @@ def decode(content):
             pass
     return content.decode('utf-8', errors='replace')
 
-url = 'https://www.moneydj.com/funddj/yp/yp011000.djhtm?a=ACDD04'
-print(f'抓取：{url}')
-r = requests.get(url, headers=HEADERS, timeout=30)
-print(f'狀態碼：{r.status_code}')
-html = decode(r.content)
+def fetch(url):
+    r = requests.get(url, headers=HEADERS, timeout=30)
+    print(f'狀態碼: {r.status_code}  長度: {len(r.content)}')
+    return decode(r.content)
 
+# ══════════════════════════════════════════════════════════════
+print('=' * 60)
+print('【1. 淨值頁面】ya/yp010000')
+html = fetch('https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACPS02')
 soup = BeautifulSoup(html, 'html.parser')
-print(f'頁面標題：{soup.title.get_text() if soup.title else "無"}')
-print(f'HTML 長度：{len(html)} 字元')
-print()
 
-# 找所有包含「淨值」的元素
-print('=== 含「淨值」的 HTML 片段 ===')
-for tag in soup.find_all(string=re.compile('淨值')):
-    parent = tag.parent
-    print(f'標籤：<{parent.name}> 內容：{parent.get_text(strip=True)[:100]}')
-    # 印出祖父元素的完整 HTML
-    gp = parent.parent
-    if gp:
-        print(f'父元素：{str(gp)[:300]}')
-    print()
-
-# 印出所有表格的前 5 列
-print('=== 所有表格（前5列）===')
+print('\n--- 所有表格（前6列）---')
 for i, table in enumerate(soup.find_all('table')):
-    rows = table.find_all('tr')[:5]
-    cells_list = []
-    for row in rows:
-        cells = [td.get_text(strip=True) for td in row.find_all(['td','th'])]
-        if cells:
-            cells_list.append(cells)
-    if cells_list:
-        print(f'表格 {i}：')
-        for c in cells_list:
-            print(f'  {c}')
-    print()
+    rows = table.find_all('tr')[:6]
+    data = [[td.get_text(strip=True) for td in row.find_all(['td','th'])] for row in rows]
+    data = [r for r in data if any(c.strip() for c in r)]
+    if data:
+        print(f'  表格 {i}:')
+        for row in data:
+            print(f'    {row}')
 
-# 印出所有數字超過 100 的 td 內容（可能是淨值）
-print('=== 所有數值 > 100 的 td ===')
+print('\n--- 數值 > 100 的 td ---')
 for td in soup.find_all('td'):
-    txt = td.get_text(strip=True).replace(',','')
+    txt = td.get_text(strip=True).replace(',', '')
     try:
         v = float(txt)
-        if v > 100:
-            print(f'  {v}  (class={td.get("class")}, id={td.get("id")})')
-            parent_row = td.find_parent('tr')
-            if parent_row:
-                row_cells = [x.get_text(strip=True) for x in parent_row.find_all(['td','th'])]
-                print(f'    同列：{row_cells}')
+        if 100 < v < 99999:
+            pr = td.find_parent('tr')
+            row_cells = [x.get_text(strip=True) for x in pr.find_all(['td','th'])] if pr else []
+            cls = td.get('class', '')
+            print(f'  值={v}  class={cls}  同列={row_cells}')
     except Exception:
         pass
+
+# ══════════════════════════════════════════════════════════════
+print('\n' + '=' * 60)
+print('【2. 持股頁面】yp/yp013000')
+html2 = fetch('https://www.moneydj.com/funddj/yp/yp013000.djhtm?a=ACPS02')
+soup2 = BeautifulSoup(html2, 'html.parser')
+
+print('\n--- 所有表格（前12列）---')
+for i, table in enumerate(soup2.find_all('table')):
+    rows = table.find_all('tr')[:12]
+    data = [[td.get_text(strip=True) for td in row.find_all(['td','th'])] for row in rows]
+    data = [r for r in data if any(c.strip() for c in r)]
+    if data:
+        print(f'  表格 {i}:')
+        for row in data:
+            print(f'    {row}')
