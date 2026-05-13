@@ -108,12 +108,8 @@
 const FUND_KEYS = ['安聯台灣科技','安聯台灣大壩','統一奔騰','統一黑馬'];
 const COLORS = {'安聯台灣科技':'#378ADD','安聯台灣大壩':'#1D9E75','統一奔騰':'#BA7517','統一黑馬':'#D4537E'};
 const PIE_CLR = ['#378ADD','#1D9E75','#EF9F27','#D4537E','#9F77DD','#B4B2A9'];
-const HOLDINGS = {
-  '安聯台灣科技':[{n:'台積電 2330',p:32},{n:'聯發科 2454',p:13},{n:'鴻海 2317',p:7},{n:'日月光投控 3711',p:6},{n:'聯詠 3034',p:5},{n:'其他',p:37}],
-  '安聯台灣大壩':[{n:'台積電 2330',p:24},{n:'鴻海 2317',p:10},{n:'聯發科 2454',p:9},{n:'富邦金 2881',p:6},{n:'中鋼 2002',p:5},{n:'其他',p:46}],
-  '統一奔騰':[{n:'台積電 2330',p:22},{n:'廣達 2382',p:10},{n:'聯發科 2454',p:8},{n:'緯創 3231',p:7},{n:'技嘉 2376',p:6},{n:'其他',p:47}],
-  '統一黑馬':[{n:'台積電 2330',p:15},{n:'矽力-KY 6415',p:9},{n:'力旺 3529',p:8},{n:'世芯-KY 3661',p:8},{n:'聯詠 3034',p:7},{n:'其他',p:53}]
-};
+let holdingsData = {};    // 從 nav.json 載入的真實持股資料
+let holdingsUpdated = ''; // 持股資料更新月份
 
 let fundData = null, currentPeriod = '1Y', lineInst = null, holdingsInit = false;
 
@@ -217,6 +213,7 @@ function switchTab(tab) {
 }
 
 function buildHoldings() {
+  const updatedLabel = holdingsUpdated ? `資料日期：${holdingsUpdated}` : '持股資料載入中…';
   document.getElementById('holdingsGrid').innerHTML = FUND_KEYS.map((f, i) => `
     <div class="holding-card">
       <div class="holding-title">${f}</div>
@@ -225,8 +222,14 @@ function buildHoldings() {
         <div class="pie-legend" id="lg${i}"></div>
       </div>
     </div>`).join('');
+
   FUND_KEYS.forEach((f, i) => {
-    const d = HOLDINGS[f];
+    // 優先使用 nav.json 的真實持股，若無則顯示提示
+    const raw = holdingsData[f];
+    const d = raw && raw.length > 0
+      ? raw.map(h => ({ n: h.name, p: h.pct }))
+      : [{ n: '資料未載入', p: 100 }];
+
     new Chart(document.getElementById('pie'+i), {
       type: 'doughnut',
       data: { labels: d.map(x=>x.n), datasets: [{ data: d.map(x=>x.p), backgroundColor: PIE_CLR, borderWidth: 0, hoverOffset: 4 }] },
@@ -239,6 +242,10 @@ function buildHoldings() {
         <span class="pie-pct">${x.p}%</span>
       </div>`).join('');
   });
+
+  // 顯示持股資料日期
+  const note = document.querySelector('#holdingsSection .footnote');
+  if (note) note.textContent = `＊${updatedLabel}，每月自動更新`;
 }
 
 document.getElementById('periodBtns').innerHTML = [['3M','3個月'],['6M','6個月'],['1Y','1年']].map(([k,l]) =>
@@ -249,8 +256,13 @@ fetch('data/nav.json')
   .then(r => r.json())
   .then(json => {
     const lastUpdated = json.last_updated || '';
-    document.getElementById('statusMsg').textContent = `資料更新至 ${lastUpdated}　每個交易日自動更新`;
-    fundData = Object.fromEntries(Object.entries(json).filter(([k]) => k !== 'last_updated'));
+    holdingsData    = json.holdings || {};
+    holdingsUpdated = json.holdings_updated || '';
+    document.getElementById('statusMsg').textContent =
+      `淨值更新至 ${lastUpdated}　持股 ${holdingsUpdated || '待更新'}　每日自動更新`;
+    // 過濾掉非淨值的鍵
+    const exclude = new Set(['last_updated', 'holdings_updated', 'holdings']);
+    fundData = Object.fromEntries(Object.entries(json).filter(([k]) => !exclude.has(k)));
     buildChart('1Y');
   })
   .catch(() => { document.getElementById('statusMsg').textContent = '載入資料失敗，請重新整理頁面'; });
