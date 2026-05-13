@@ -2,8 +2,8 @@ name: 每日更新基金淨值
 
 on:
   schedule:
-    # 台灣時間 18:30（UTC 10:30），週一至週五執行
-    - cron: '30 10 * * 1-5'
+    # 台灣時間 22:00（UTC 14:00），週一至週五執行
+    - cron: '0 14 * * 1-5'
   workflow_dispatch:
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Fetch today's NAV
+      - name: Fetch NAV and holdings
         run: python scripts/fetch_nav.py
 
       - name: Commit and push if data changed
@@ -33,6 +33,6 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data/nav.json
           git diff --staged --quiet && echo "No changes to commit" || (
-            git commit -m "自動更新淨值 $(TZ='Asia/Taipei' date '+%Y/%m/%d')"
+            git commit -m "自動更新 $(TZ='Asia/Taipei' date '+%Y/%m/%d %H:%M')"
             git push
           )
