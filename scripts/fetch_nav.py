@@ -1,6 +1,7 @@
 """
 fetch_nav.py — 每日自動執行
 ・從 MoneyDJ 抓取四檔基金最新淨值（ya/yp010000）
+・從 MoneyDJ 抓取 00981A ETF 最新淨值（ETF/X/Basic/Basic0003.xdjhtm）
 ・每月抓取一次前十大持股（yp/yp013000），各基金分別記錄資料月份
 ・淨值保留最近一年，超過自動刪除
 """
@@ -14,6 +15,8 @@ from datetime import datetime, timedelta
 
 # ── 基金設定 ──────────────────────────────────────────────────────
 FUND_KEYS = ['安聯台灣科技', '安聯台灣大壩', '統一奔騰', '統一黑馬']
+ETF_KEYS  = ['00981A']
+ALL_KEYS  = FUND_KEYS + ETF_KEYS
 NAV_FILE  = 'data/nav.json'
 
 CODES = {
@@ -25,6 +28,7 @@ CODES = {
 
 NAV_URL      = 'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a={}'
 HOLDINGS_URL = 'https://www.moneydj.com/funddj/yp/yp013000.djhtm?a={}'
+ETF_URL      = 'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid={}.TW'
 
 HEADERS = {
     'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
@@ -49,16 +53,27 @@ def today_str():
 def one_year_ago():
     return fmt_date(tw_now() - timedelta(days=366))
 
+def roc_to_gregorian(roc_date):
+    """將民國年日期（115/05/13）轉換為西元（2026/05/13）"""
+    parts = roc_date.strip().split('/')
+    if len(parts) == 3:
+        try:
+            year = int(parts[0]) + 1911
+            return f'{year}/{parts[1].zfill(2)}/{parts[2].zfill(2)}'
+        except Exception:
+            pass
+    return roc_date
+
 # ── 資料檔 ────────────────────────────────────────────────────────
 def load_nav():
     with open(NAV_FILE, encoding='utf-8') as f:
         return json.load(f)
 
 def save_nav(data):
-    """儲存前將各基金淨值日期由新到舊排序"""
+    """儲存前將各基金/ETF 淨值日期由新到舊排序"""
     sorted_data = {}
     for k, v in data.items():
-        if isinstance(v, dict) and k in FUND_KEYS:
+        if isinstance(v, dict) and k in ALL_KEYS:
             sorted_data[k] = dict(sorted(v.items(), reverse=True))
         else:
             sorted_data[k] = v
@@ -68,9 +83,9 @@ def save_nav(data):
 def trim_old_nav(data):
     """刪除一年前的淨值"""
     cutoff = one_year_ago()
-    for fund in FUND_KEYS:
-        if fund in data and isinstance(data[fund], dict):
-            data[fund] = {k: v for k, v in data[fund].items() if k >= cutoff}
+    for key in ALL_KEYS:
+        if key in data and isinstance(data[key], dict):
+            data[key] = {k: v for k, v in data[key].items() if k >= cutoff}
     return data
 
 # ── HTTP 工具 ─────────────────────────────────────────────────────
@@ -83,12 +98,9 @@ def fetch(url):
             pass
     return BeautifulSoup(r.text, 'html.parser')
 
-# ── 淨值解析 ──────────────────────────────────────────────────────
+# ── 基金淨值解析 ──────────────────────────────────────────────────
 def parse_nav(code):
-    """
-    淨值頁 ya/yp010000：
-    表格標題列含「最新淨值」→ 下一列：第1格=淨值日期，第2格=最新淨值
-    """
+    """淨值頁 ya/yp010000：標題列含「最新淨值」→ 下一列第1格=日期，第2格=淨值"""
     soup = fetch(NAV_URL.format(code))
     for table in soup.find_all('table'):
         rows = table.find_all('tr')
@@ -105,18 +117,73 @@ def parse_nav(code):
                         pass
     return None, None
 
+# ── ETF 淨值解析 ──────────────────────────────────────────────────
+def parse_etf_nav(etf_id):
+    """
+    ETF 頁面 ETF/X/Basic/Basic0003.xdjhtm：
+    找含「淨值」的列，取相鄰的數值和日期
+    日期可能為民國年格式，自動轉換
+    """
+    soup = fetch(ETF_URL.format(etf_id))
+    text_all = soup.get_text()
+
+    # 策略1：從表格找「淨值」標籤旁的數值和日期
+    for table in soup.find_all('table'):
+        rows = table.find_all('tr')
+        for row in rows:
+            cells = [td.get_text(strip=True) for td in row.find_all(['td', 'th'])]
+            # 找含「淨值」的列
+            if any('淨值' in c for c in cells):
+                for i, cell in enumerate(cells):
+                    if '淨值' in cell:
+                        # 往後找數值
+                        for j in range(i+1, min(i+4, len(cells))):
+                            try:
+                                val = float(cells[j].replace(',', ''))
+                                if 5 < val < 99999:
+                                    # 找日期（可能在同列其他格）
+                                    date_str = ''
+                                    for c in cells:
+                                        # 西元日期
+                                        m = re.search(r'(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})', c)
+                                        if m:
+                                            date_str = f'{m.group(1)}/{m.group(2).zfill(2)}/{m.group(3).zfill(2)}'
+                                            break
+                                        # 民國日期
+                                        m = re.search(r'(\d{2,3})[/\-](\d{1,2})[/\-](\d{1,2})', c)
+                                        if m and int(m.group(1)) < 200:
+                                            date_str = roc_to_gregorian(f'{m.group(1)}/{m.group(2)}/{m.group(3)}')
+                                            break
+                                    return round(val, 2), date_str
+                            except Exception:
+                                pass
+
+    # 策略2：正則從全文找「淨值」附近的數值
+    patterns = [
+        r'淨值[^\d]{0,20}(\d{1,4}\.\d{1,4})',
+        r'(\d{1,4}\.\d{1,4})[^\d]{0,10}淨值',
+    ]
+    for pat in patterns:
+        m = re.search(pat, text_all)
+        if m:
+            try:
+                val = float(m.group(1))
+                if 5 < val < 99999:
+                    return round(val, 2), today_str()
+            except Exception:
+                pass
+
+    return None, None
+
 # ── 持股解析 ──────────────────────────────────────────────────────
 def parse_holdings(code):
     """
     持股頁 yp/yp013000：
-    1. 找到投資明細表格（標題含「投資名稱」+「比例」）
-    2. 在該表格之後找「資料月份」或「資料日期」
-    3. 取全部持股，按比例排序後回傳前 10 大
+    在投資明細表格之後找「資料月份」或「資料日期」
     """
     soup = fetch(HOLDINGS_URL.format(code))
     tables = soup.find_all('table')
 
-    # 找持股表格位置並同時解析持股
     holdings = []
     holdings_table_idx = -1
 
@@ -128,7 +195,6 @@ def parse_holdings(code):
             rows = table.find_all('tr')
             for row in rows[1:]:
                 cells = [td.get_text(strip=True) for td in row.find_all(['td', 'th'])]
-                # 左欄：index 0=名稱, 2=比例
                 if len(cells) >= 3:
                     try:
                         name1 = cells[0].strip()
@@ -137,7 +203,6 @@ def parse_holdings(code):
                             holdings.append({'name': name1, 'pct': pct1})
                     except Exception:
                         pass
-                # 右欄：index 4=名稱, 6=比例
                 if len(cells) >= 7:
                     try:
                         name2 = cells[4].strip()
@@ -148,7 +213,6 @@ def parse_holdings(code):
                         pass
             break
 
-    # 在持股表格之後找「資料月份」或「資料日期」（投資明細區塊的日期）
     data_date = ''
     search_tables = tables[holdings_table_idx+1:] if holdings_table_idx >= 0 else tables
     for table in search_tables:
@@ -175,33 +239,33 @@ def main():
     data = load_nav()
 
     missing_nav   = [f for f in FUND_KEYS if today not in data.get(f, {})]
+    missing_etf   = [e for e in ETF_KEYS  if today not in data.get(e, {})]
     need_holdings = data.get('holdings_updated', '') != this_month
 
-    print(f'待更新淨值：{missing_nav if missing_nav else "全部已有"}')
+    print(f'待更新基金淨值：{missing_nav if missing_nav else "全部已有"}')
+    print(f'待更新ETF淨值：{missing_etf if missing_etf else "全部已有"}')
     print(f'持股更新：{"需要" if need_holdings else f"本月({this_month})已更新，略過"}')
 
-    if not missing_nav and not need_holdings:
+    if not missing_nav and not missing_etf and not need_holdings:
         print('所有資料已是最新，略過。')
         return
 
     nav_ok, nav_fail, holdings_ok = [], [], []
 
+    # ── 四檔基金淨值 ──
     for fund in FUND_KEYS:
-        need_nav = fund in missing_nav
-        if not need_nav and not need_holdings:
+        if fund not in missing_nav and not need_holdings:
             continue
 
         code = CODES[fund]
         print(f'\n  [{fund}]（代碼 {code}）')
 
-        # ── 淨值（以 MoneyDJ 回傳的日期為準）──
-        if need_nav:
+        if fund in missing_nav:
             try:
                 nav, nav_date = parse_nav(code)
                 if nav and nav_date:
                     fund_data = data.setdefault(fund, {})
                     if nav_date in fund_data:
-                        # 該日期已存在 → 今日淨值尚未公布
                         print(f'    淨值 ✗  MoneyDJ 最新為 {nav_date}（已存），今日淨值尚未公布')
                         nav_fail.append(fund)
                     else:
@@ -215,21 +279,15 @@ def main():
                 nav_fail.append(fund)
                 print(f'    淨值 ✗  錯誤: {e}')
 
-        # ── 持股（以字典格式儲存，含各基金資料月份）──
         if need_holdings:
             try:
                 holdings, h_date = parse_holdings(code)
                 if holdings:
-                    # 儲存格式：{"date": "2026/03/31", "data": [...]}
-                    data.setdefault('holdings', {})[fund] = {
-                        'date': h_date,
-                        'data': holdings
-                    }
+                    data.setdefault('holdings', {})[fund] = {'date': h_date, 'data': holdings}
                     holdings_ok.append(fund)
                     top3 = ', '.join(f'{h["name"]}({h["pct"]}%)' for h in holdings[:3])
                     print(f'    持股 ✓  {len(holdings)} 筆（資料月份 {h_date}）：{top3}…')
                 else:
-                    # 保留舊資料
                     old = data.get('holdings', {}).get(fund)
                     if old:
                         data.setdefault('holdings', {})[fund] = old
@@ -237,6 +295,30 @@ def main():
             except Exception as e:
                 print(f'    持股 ✗  錯誤: {e}')
 
+        time.sleep(2)
+
+    # ── ETF 淨值 ──
+    for etf in ETF_KEYS:
+        if etf not in missing_etf:
+            continue
+        print(f'\n  [ETF {etf}]')
+        try:
+            nav, nav_date = parse_etf_nav(etf)
+            if nav and nav_date:
+                etf_data = data.setdefault(etf, {})
+                if nav_date in etf_data:
+                    print(f'    淨值 ✗  MoneyDJ 最新為 {nav_date}（已存），今日淨值尚未公布')
+                    nav_fail.append(etf)
+                else:
+                    etf_data[nav_date] = nav
+                    nav_ok.append(f'{etf}: {nav}（{nav_date}）')
+                    print(f'    淨值 ✓  {nav}（{nav_date}）')
+            else:
+                nav_fail.append(etf)
+                print(f'    淨值 ✗  找不到')
+        except Exception as e:
+            nav_fail.append(etf)
+            print(f'    淨值 ✗  錯誤: {e}')
         time.sleep(2)
 
     # ── 儲存 ──
