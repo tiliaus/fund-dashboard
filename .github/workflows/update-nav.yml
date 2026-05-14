@@ -28,7 +28,7 @@ jobs:
         run: pip install requests beautifulsoup4
 
       - name: Fetch NAV and holdings
-        run: python scripts/fetch_nav.py
+        run: python add_etf_data.py
 
       - name: Commit and push if data changed
         run: |
