@@ -120,59 +120,25 @@ def parse_nav(code):
 # ── ETF 淨值解析 ──────────────────────────────────────────────────
 def parse_etf_nav(etf_id):
     """
-    ETF 頁面 ETF/X/Basic/Basic0003.xdjhtm：
-    找含「淨值」的列，取相鄰的數值和日期
-    日期可能為民國年格式，自動轉換
+    ETF 頁面：找含「淨值」的列（非市價），取第 2 格（價格欄）的數值
+    日期從第 1 格括號內取得，如「淨值(2026/05/14)」
     """
     soup = fetch(ETF_URL.format(etf_id))
-    text_all = soup.get_text()
-
-    # 策略1：從表格找「淨值」標籤旁的數值和日期
     for table in soup.find_all('table'):
-        rows = table.find_all('tr')
-        for row in rows:
+        for row in table.find_all('tr'):
             cells = [td.get_text(strip=True) for td in row.find_all(['td', 'th'])]
-            # 找含「淨值」的列
-            if any('淨值' in c for c in cells):
-                for i, cell in enumerate(cells):
-                    if '淨值' in cell:
-                        # 往後找數值
-                        for j in range(i+1, min(i+4, len(cells))):
-                            try:
-                                val = float(cells[j].replace(',', ''))
-                                if 5 < val < 99999:
-                                    # 找日期（可能在同列其他格）
-                                    date_str = ''
-                                    for c in cells:
-                                        # 西元日期
-                                        m = re.search(r'(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})', c)
-                                        if m:
-                                            date_str = f'{m.group(1)}/{m.group(2).zfill(2)}/{m.group(3).zfill(2)}'
-                                            break
-                                        # 民國日期
-                                        m = re.search(r'(\d{2,3})[/\-](\d{1,2})[/\-](\d{1,2})', c)
-                                        if m and int(m.group(1)) < 200:
-                                            date_str = roc_to_gregorian(f'{m.group(1)}/{m.group(2)}/{m.group(3)}')
-                                            break
-                                    return round(val, 2), date_str
-                            except Exception:
-                                pass
-
-    # 策略2：正則從全文找「淨值」附近的數值
-    patterns = [
-        r'淨值[^\d]{0,20}(\d{1,4}\.\d{1,4})',
-        r'(\d{1,4}\.\d{1,4})[^\d]{0,10}淨值',
-    ]
-    for pat in patterns:
-        m = re.search(pat, text_all)
-        if m:
-            try:
-                val = float(m.group(1))
-                if 5 < val < 99999:
-                    return round(val, 2), today_str()
-            except Exception:
-                pass
-
+            if len(cells) >= 2 and '淨值' in cells[0] and '市價' not in cells[0]:
+                # 第 2 格是價格，去除「(台幣)」等文字
+                price_str = re.sub(r'[^\d.]', '', cells[1])
+                try:
+                    val = round(float(price_str), 2)
+                    if 5 < val < 99999:
+                        # 從第 1 格取日期，如「淨值(2026/05/14)」
+                        m = re.search(r'(\d{4}/\d{2}/\d{2})', cells[0])
+                        date_str = m.group(1) if m else today_str()
+                        return val, date_str
+                except Exception:
+                    pass
     return None, None
 
 # ── 持股解析 ──────────────────────────────────────────────────────
