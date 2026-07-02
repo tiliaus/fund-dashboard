@@ -16,15 +16,29 @@
     .period-btns { display: flex; gap: 4px; align-items: center; }
     .period-btn { padding: 6px 14px; font-size: 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.2); background: none; cursor: pointer; color: #5F5E5A; transition: all 0.15s; }
     .period-btn.active { background: rgba(0,0,0,0.07); color: #2C2C2A; font-weight: 500; }
-    .tabs { display: flex; border-bottom: 0.5px solid rgba(0,0,0,0.15); margin-bottom: 1.25rem; }
+    .tabs { display: flex; border-bottom: 0.5px solid rgba(0,0,0,0.15); margin-bottom: 0; }
     .tab-btn { padding: 8px 16px; font-size: 13px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; color: #5F5E5A; margin-bottom: -1px; }
     .tab-btn.active { border-bottom-color: #2C2C2A; color: #2C2C2A; font-weight: 500; }
+
+    /* Fund selector */
+    .fund-selector { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 10px 0 14px; border-bottom: 0.5px solid rgba(0,0,0,0.08); margin-bottom: 1.25rem; }
+    .fund-checkbox { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #5F5E5A; user-select: none; }
+    .fund-checkbox input { display: none; }
+    .fund-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 20px;
+      border: 1.5px solid #ddd; background: #fff;
+      cursor: pointer; font-size: 12px; color: #5F5E5A;
+      transition: all 0.15s;
+    }
+    .fund-chip .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .fund-chip.checked { color: #2C2C2A; font-weight: 500; }
+    .fund-chip:hover { border-color: #bbb; }
+
     .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 1rem; font-size: 12px; }
     .legend-item { display: flex; align-items: center; gap: 5px; }
     .legend-line { width: 18px; height: 2px; display: inline-block; flex-shrink: 0; }
     .metrics { display: grid; gap: 8px; margin-bottom: 1.25rem; }
-    .metrics-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .metrics-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .metric-card { background: rgba(0,0,0,0.04); border-left: 3px solid #ccc; border-radius: 0; padding: 10px 12px; }
     .metric-label { font-size: 11px; color: #5F5E5A; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .metric-value { font-size: 19px; font-weight: 500; }
@@ -43,9 +57,9 @@
     .pie-name { flex: 1; color: #5F5E5A; }
     .pie-pct { font-weight: 500; }
     .footnote { font-size: 11px; color: #888780; margin-top: 10px; }
+    .no-selection { text-align: center; padding: 3rem; color: #888780; font-size: 13px; }
     @media (max-width: 600px) {
       .container { padding: 1.25rem 1rem; }
-      .metrics-4, .metrics-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .holdings-grid { grid-template-columns: 1fr; }
     }
   </style>
@@ -66,18 +80,21 @@
     <button class="tab-btn" id="tabHoldings" onclick="switchTab('holdings')">持股分配</button>
   </div>
 
+  <!-- 基金選擇器 -->
+  <div id="fundSelector" class="fund-selector"></div>
+
   <!-- 走勢比較 -->
   <div id="chartSection">
     <div class="legend" id="legend"></div>
-    <div class="metrics metrics-4" id="metrics"></div>
-    <div class="chart-wrap"><canvas id="lineChart" role="img" aria-label="四檔基金淨值相對報酬走勢折線圖"></canvas></div>
+    <div class="metrics" id="metrics"></div>
+    <div class="chart-wrap"><canvas id="lineChart" role="img" aria-label="基金淨值相對報酬走勢折線圖"></canvas></div>
   </div>
 
   <!-- 與ETF比較 -->
   <div id="etfSection" style="display:none;">
     <div class="legend" id="etfLegend"></div>
-    <div class="metrics metrics-5" id="etfMetrics"></div>
-    <div class="chart-wrap"><canvas id="etfChart" role="img" aria-label="四檔基金與00981A ETF淨值相對報酬走勢折線圖"></canvas></div>
+    <div class="metrics" id="etfMetrics"></div>
+    <div class="chart-wrap"><canvas id="etfChart" role="img" aria-label="基金與ETF淨值相對報酬走勢折線圖"></canvas></div>
   </div>
 
   <!-- 持股分配 -->
@@ -91,15 +108,27 @@
 const FUND_KEYS=['安聯台灣科技','安聯台灣大壩','統一奔騰','統一黑馬'];
 const ETF_ID='00981A';
 const ALL_KEYS=[...FUND_KEYS,ETF_ID];
-const COLORS={
-  '安聯台灣科技':'#378ADD','安聯台灣大壩':'#1D9E75','統一奔騰':'#BA7517','統一黑馬':'#D4537E',
-  '00981A':'#7C3AED'
-};
+const COLORS={'安聯台灣科技':'#378ADD','安聯台灣大壩':'#1D9E75','統一奔騰':'#BA7517','統一黑馬':'#D4537E','00981A':'#7C3AED'};
 const LABELS={'00981A':'00981A ETF'};
 const PIE_CLR=['#378ADD','#1D9E75','#EF9F27','#D4537E','#9F77DD','#B4B2A9'];
-let holdingsData={},fundData=null,currentPeriod='1Y',lineInst=null,etfInst=null,holdingsInit=false;
 
-function cutoffStr(months){const d=new Date();if(months===12)d.setFullYear(d.getFullYear()-1);else d.setMonth(d.getMonth()-months);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
+let holdingsData={}, fundData=null, currentPeriod='1Y';
+let lineInst=null, etfInst=null, holdingsInit=false;
+let currentTab='chart';
+
+// 各 tab 的勾選狀態
+const selected={
+  chart: new Set(FUND_KEYS),
+  etf:   new Set(ALL_KEYS)
+};
+
+// ── 日期工具 ──────────────────────────────────────────────────────
+function cutoffStr(months){
+  const d=new Date();
+  if(months===12)d.setFullYear(d.getFullYear()-1);
+  else d.setMonth(d.getMonth()-months);
+  return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
 
 function getSliceDates(keys,period){
   const months={'3M':3,'6M':6,'1Y':12};
@@ -109,7 +138,12 @@ function getSliceDates(keys,period){
   return[...all].sort();
 }
 
-function buildLineChart(canvasId,keys,period,instRef){
+// ── 圖表 ──────────────────────────────────────────────────────────
+function buildLineChartCore(canvasId,keys,period,instRef){
+  if(keys.length===0){
+    if(instRef.current){instRef.current.destroy();instRef.current=null;}
+    return{dates:[],baseNav:{}};
+  }
   const dates=getSliceDates(keys,period);
   const baseNav={};
   keys.forEach(f=>{const fd=dates.find(d=>fundData[f]?.[d]!=null);baseNav[f]=fd?fundData[f][fd]:null;});
@@ -124,13 +158,19 @@ function buildLineChart(canvasId,keys,period,instRef){
   instRef.current=new Chart(document.getElementById(canvasId),{
     type:'line',data:{labels:dates.map(d=>d.slice(5)),datasets},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#2C2C2A',bodyColor:'#5F5E5A',borderColor:'#D3D1C7',borderWidth:1,padding:10,callbacks:{label:ctx=>{if(ctx.raw==null)return'';const v=(ctx.raw-100).toFixed(2);return` ${ctx.dataset.label}: ${v>=0?'+':''}${v}%`;}}}},
-      scales:{x:{grid:{display:false},border:{color:'#D3D1C7'},ticks:{color:'#888780',font:{size:11},maxTicksLimit:maxT,maxRotation:0}},y:{grid:{color:'rgba(0,0,0,0.05)'},border:{display:false},ticks:{color:'#888780',font:{size:11},callback:v=>{const d=Math.round(v-100);return(d>=0?'+':'')+d+'%';}}}}}
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#2C2C2A',bodyColor:'#5F5E5A',borderColor:'#D3D1C7',borderWidth:1,padding:10,
+        callbacks:{label:ctx=>{if(ctx.raw==null)return'';const v=(ctx.raw-100).toFixed(2);return` ${ctx.dataset.label}: ${v>=0?'+':''}${v}%`;}}}},
+      scales:{
+        x:{grid:{display:false},border:{color:'#D3D1C7'},ticks:{color:'#888780',font:{size:11},maxTicksLimit:maxT,maxRotation:0}},
+        y:{grid:{color:'rgba(0,0,0,0.05)'},border:{display:false},ticks:{color:'#888780',font:{size:11},callback:v=>{const d=Math.round(v-100);return(d>=0?'+':'')+d+'%';}}}
+      }
+    }
   });
   return{dates,baseNav};
 }
 
 function updateLegendMetrics(legendId,metricsId,keys,dates,baseNav){
+  const colCount=Math.min(keys.length,5);
   document.getElementById(legendId).innerHTML=keys.map(f=>{
     const lastDate=dates.filter(d=>fundData[f]?.[d]!=null).pop();
     const last=lastDate?fundData[f][lastDate]:null;
@@ -138,6 +178,7 @@ function updateLegendMetrics(legendId,metricsId,keys,dates,baseNav){
     const ret=((last/baseNav[f]-1)*100).toFixed(2);const clr=ret>=0?'#1D9E75':'#E24B4A';
     return`<span class="legend-item"><span class="legend-line" style="background:${COLORS[f]};"></span><span style="color:#5F5E5A;">${LABELS[f]||f}</span><span style="color:${clr};font-weight:500;">${ret>=0?'+':''}${ret}%</span></span>`;
   }).join('');
+  document.getElementById(metricsId).style.gridTemplateColumns=`repeat(${colCount},minmax(0,1fr))`;
   document.getElementById(metricsId).innerHTML=keys.map(f=>{
     const lastDate=dates.filter(d=>fundData[f]?.[d]!=null).pop();
     const last=lastDate?fundData[f][lastDate]:null;
@@ -147,37 +188,102 @@ function updateLegendMetrics(legendId,metricsId,keys,dates,baseNav){
   }).join('');
 }
 
-const lineRef={current:null}, etfRef={current:null};
-
 function buildChart(period){
-  const{dates,baseNav}=buildLineChart('lineChart',FUND_KEYS,period,lineRef);
-  updateLegendMetrics('legend','metrics',FUND_KEYS,dates,baseNav);
+  const keys=[...selected.chart];
+  if(keys.length===0){
+    if(lineInst){lineInst.destroy();lineInst=null;}
+    document.getElementById('legend').innerHTML='';
+    document.getElementById('metrics').innerHTML='<div class="no-selection">請至少選擇一檔基金</div>';
+    return;
+  }
+  const ref={current:lineInst};
+  const{dates,baseNav}=buildLineChartCore('lineChart',keys,period,ref);
+  lineInst=ref.current;
+  updateLegendMetrics('legend','metrics',keys,dates,baseNav);
 }
 
 function buildEtfChart(period){
-  const{dates,baseNav}=buildLineChart('etfChart',ALL_KEYS,period,etfRef);
-  updateLegendMetrics('etfLegend','etfMetrics',ALL_KEYS,dates,baseNav);
+  const keys=[...selected.etf];
+  if(keys.length===0){
+    if(etfInst){etfInst.destroy();etfInst=null;}
+    document.getElementById('etfLegend').innerHTML='';
+    document.getElementById('etfMetrics').innerHTML='<div class="no-selection">請至少選擇一檔基金或ETF</div>';
+    return;
+  }
+  const ref={current:etfInst};
+  const{dates,baseNav}=buildLineChartCore('etfChart',keys,period,ref);
+  etfInst=ref.current;
+  updateLegendMetrics('etfLegend','etfMetrics',keys,dates,baseNav);
 }
 
-function setPeriod(p){
-  currentPeriod=p;
-  document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',b.dataset.period===p));
-  const activeTab=document.querySelector('.tab-btn.active')?.id;
-  if(activeTab==='tabChart')buildChart(p);
-  else if(activeTab==='tabEtf')buildEtfChart(p);
+// ── 基金選擇器 ────────────────────────────────────────────────────
+function renderSelector(){
+  const tab=currentTab;
+  const el=document.getElementById('fundSelector');
+  if(tab==='holdings'){el.style.display='none';return;}
+  el.style.display='flex';
+
+  const pool=tab==='etf'?ALL_KEYS:FUND_KEYS;
+  const sel=selected[tab];
+
+  el.innerHTML=pool.map(f=>{
+    const isChecked=sel.has(f);
+    const color=COLORS[f];
+    return`<label class="fund-checkbox">
+      <input type="checkbox" value="${f}" ${isChecked?'checked':''} onchange="toggleFund('${f}')">
+      <span class="fund-chip ${isChecked?'checked':''}" id="chip_${f.replace(/[^a-zA-Z0-9]/g,'_')}">
+        <span class="chip-dot" style="background:${isChecked?color:'#ccc'};"></span>
+        ${LABELS[f]||f}
+      </span>
+    </label>`;
+  }).join('');
 }
 
+function toggleFund(f){
+  const tab=currentTab;
+  const sel=selected[tab];
+  if(sel.has(f)){
+    if(sel.size<=1)return; // 至少保留一檔
+    sel.delete(f);
+  } else {
+    sel.add(f);
+  }
+  // 更新 chip 樣式
+  const chipId='chip_'+f.replace(/[^a-zA-Z0-9]/g,'_');
+  const chip=document.getElementById(chipId);
+  if(chip){
+    const isChecked=sel.has(f);
+    chip.classList.toggle('checked',isChecked);
+    chip.querySelector('.chip-dot').style.background=isChecked?COLORS[f]:'#ccc';
+  }
+  // 重繪圖表
+  if(tab==='chart')buildChart(currentPeriod);
+  else if(tab==='etf')buildEtfChart(currentPeriod);
+}
+
+// ── Tab 切換 ──────────────────────────────────────────────────────
 function switchTab(tab){
+  currentTab=tab;
   ['chart','etf','holdings'].forEach(t=>{
     document.getElementById(t==='chart'?'chartSection':t==='etf'?'etfSection':'holdingsSection').style.display=t===tab?'':'none';
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active',t===tab);
   });
   document.getElementById('periodBtns').style.display=tab==='holdings'?'none':'flex';
+  renderSelector();
   if(tab==='chart')buildChart(currentPeriod);
   else if(tab==='etf')buildEtfChart(currentPeriod);
   else if(tab==='holdings'&&!holdingsInit){buildHoldings();holdingsInit=true;}
 }
 
+// ── 期間切換 ──────────────────────────────────────────────────────
+function setPeriod(p){
+  currentPeriod=p;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',b.dataset.period===p));
+  if(currentTab==='chart')buildChart(p);
+  else if(currentTab==='etf')buildEtfChart(p);
+}
+
+// ── 持股分配 ──────────────────────────────────────────────────────
 function buildHoldings(){
   document.getElementById('holdingsGrid').innerHTML=FUND_KEYS.map((f,i)=>{
     const fd=holdingsData[f];
@@ -196,6 +302,7 @@ function buildHoldings(){
   });
 }
 
+// ── 初始化 ────────────────────────────────────────────────────────
 document.getElementById('periodBtns').innerHTML=[['3M','3個月'],['6M','6個月'],['1Y','1年']].map(([k,l])=>`<button class="period-btn${k==='1Y'?' active':''}" data-period="${k}" onclick="setPeriod('${k}')">${l}</button>`).join('');
 
 fetch('data/nav.json?t='+Date.now())
@@ -205,6 +312,7 @@ fetch('data/nav.json?t='+Date.now())
     document.getElementById('statusMsg').textContent=`淨值更新至 ${json.last_updated||''}　每日自動更新`;
     const exclude=new Set(['last_updated','holdings_updated','holdings_date','holdings']);
     fundData=Object.fromEntries(Object.entries(json).filter(([k])=>!exclude.has(k)));
+    renderSelector();
     buildChart('1Y');
   })
   .catch(()=>{document.getElementById('statusMsg').textContent='載入資料失敗，請重新整理頁面';});
