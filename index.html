@@ -16,6 +16,11 @@
     .period-btns { display: flex; gap: 4px; align-items: center; }
     .period-btn { padding: 6px 14px; font-size: 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.2); background: none; cursor: pointer; color: #5F5E5A; transition: all 0.15s; }
     .period-btn.active { background: rgba(0,0,0,0.07); color: #2C2C2A; font-weight: 500; }
+    .date-range { display:flex; align-items:center; gap:6px; font-size:12px; color:#5F5E5A; flex-wrap:wrap; }
+    .date-input { padding:5px 8px; font-size:12px; border:0.5px solid rgba(0,0,0,0.2); border-radius:8px; background:#fff; color:#2C2C2A; cursor:pointer; outline:none; }
+    .date-input:focus { border-color:#378ADD; }
+    .date-apply { padding:5px 12px; font-size:12px; border-radius:8px; border:0.5px solid rgba(0,0,0,0.2); background:none; cursor:pointer; color:#5F5E5A; transition:all 0.15s; }
+    .date-apply:hover { background:rgba(0,0,0,0.05); }
     .tabs { display: flex; border-bottom: 0.5px solid rgba(0,0,0,0.15); margin-bottom: 0; }
     .tab-btn { padding: 8px 16px; font-size: 13px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; color: #5F5E5A; margin-bottom: -1px; }
     .tab-btn.active { border-bottom-color: #2C2C2A; color: #2C2C2A; font-weight: 500; }
@@ -74,6 +79,16 @@
     </div>
     <div class="period-btns" id="periodBtns"></div>
   </div>
+  <div id="dateRangeRow" style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+    <div class="date-range">
+      <span>自訂區間：</span>
+      <input type="date" id="dateFrom" class="date-input">
+      <span>～</span>
+      <input type="date" id="dateTo" class="date-input">
+      <button class="date-apply" onclick="applyDateRange()">套用</button>
+      <button class="date-apply" onclick="clearDateRange()" id="clearBtn" style="display:none;">清除</button>
+    </div>
+  </div>
   <div class="tabs">
     <button class="tab-btn active" id="tabChart" onclick="switchTab('chart')">走勢比較</button>
     <button class="tab-btn" id="tabEtf" onclick="switchTab('etf')">與ETF比較</button>
@@ -113,6 +128,7 @@ const LABELS={'00981A':'00981A ETF'};
 const PIE_CLR=['#378ADD','#1D9E75','#EF9F27','#D4537E','#9F77DD','#B4B2A9'];
 
 let holdingsData={}, fundData=null, currentPeriod='1Y';
+let customDateFrom='', customDateTo='';
 let lineInst=null, etfInst=null, holdingsInit=false;
 let currentTab='chart';
 
@@ -131,10 +147,16 @@ function cutoffStr(months){
 }
 
 function getSliceDates(keys,period){
-  const months={'3M':3,'6M':6,'1Y':12};
-  const cut=cutoffStr(months[period]);
+  let cutFrom, cutTo='9999/99/99';
+  if(customDateFrom && customDateTo){
+    cutFrom=customDateFrom.replace(/-/g,'/');
+    cutTo=customDateTo.replace(/-/g,'/');
+  } else {
+    const months={'3M':3,'6M':6,'1Y':12};
+    cutFrom=cutoffStr(months[period]);
+  }
   const all=new Set();
-  keys.forEach(f=>Object.keys(fundData[f]||{}).forEach(d=>{if(d>=cut)all.add(d);}));
+  keys.forEach(f=>Object.keys(fundData[f]||{}).forEach(d=>{if(d>=cutFrom&&d<=cutTo)all.add(d);}));
   return[...all].sort();
 }
 
@@ -268,7 +290,9 @@ function switchTab(tab){
     document.getElementById(t==='chart'?'chartSection':t==='etf'?'etfSection':'holdingsSection').style.display=t===tab?'':'none';
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active',t===tab);
   });
-  document.getElementById('periodBtns').style.display=tab==='holdings'?'none':'flex';
+  const showControls=tab!=='holdings';
+  document.getElementById('periodBtns').style.display=showControls?'flex':'none';
+  document.getElementById('dateRangeRow').style.display=showControls?'flex':'none';
   renderSelector();
   if(tab==='chart')buildChart(currentPeriod);
   else if(tab==='etf')buildEtfChart(currentPeriod);
@@ -276,8 +300,38 @@ function switchTab(tab){
 }
 
 // ── 期間切換 ──────────────────────────────────────────────────────
+function applyDateRange(){
+  const from=document.getElementById('dateFrom').value;
+  const to=document.getElementById('dateTo').value;
+  if(!from||!to){alert('請選擇開始和結束日期');return;}
+  if(from>to){alert('開始日期不能晚於結束日期');return;}
+  customDateFrom=from; customDateTo=to;
+  // 取消 period 按鈕的 active 狀態
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('clearBtn').style.display='';
+  if(currentTab==='chart')buildChart(currentPeriod);
+  else if(currentTab==='etf')buildEtfChart(currentPeriod);
+}
+
+function clearDateRange(){
+  customDateFrom=''; customDateTo='';
+  document.getElementById('dateFrom').value='';
+  document.getElementById('dateTo').value='';
+  document.getElementById('clearBtn').style.display='none';
+  // 恢復 1Y active
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',b.dataset.period==='1Y'));
+  currentPeriod='1Y';
+  if(currentTab==='chart')buildChart('1Y');
+  else if(currentTab==='etf')buildEtfChart('1Y');
+}
+
 function setPeriod(p){
   currentPeriod=p;
+  // 清除自訂日期
+  customDateFrom=''; customDateTo='';
+  document.getElementById('dateFrom').value='';
+  document.getElementById('dateTo').value='';
+  document.getElementById('clearBtn').style.display='none';
   document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',b.dataset.period===p));
   if(currentTab==='chart')buildChart(p);
   else if(currentTab==='etf')buildEtfChart(p);
@@ -312,6 +366,16 @@ fetch('data/nav.json?t='+Date.now())
     document.getElementById('statusMsg').textContent=`淨值更新至 ${json.last_updated||''}　每日自動更新`;
     const exclude=new Set(['last_updated','holdings_updated','holdings_date','holdings']);
     fundData=Object.fromEntries(Object.entries(json).filter(([k])=>!exclude.has(k)));
+    // 設定日期選擇器的最小最大值
+    const allDates=Object.values(fundData).flatMap(v=>Object.keys(v)).sort();
+    if(allDates.length){
+      const minDate=allDates[0].replace(/\//g,'-');
+      const maxDate=allDates[allDates.length-1].replace(/\//g,'-');
+      document.getElementById('dateFrom').min=minDate;
+      document.getElementById('dateFrom').max=maxDate;
+      document.getElementById('dateTo').min=minDate;
+      document.getElementById('dateTo').max=maxDate;
+    }
     renderSelector();
     buildChart('1Y');
   })
