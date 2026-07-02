@@ -270,14 +270,8 @@ function toggleFund(f){
   } else {
     sel.add(f);
   }
-  // 更新 chip 樣式
-  const chipId='chip_'+f.replace(/[^a-zA-Z0-9]/g,'_');
-  const chip=document.getElementById(chipId);
-  if(chip){
-    const isChecked=sel.has(f);
-    chip.classList.toggle('checked',isChecked);
-    chip.querySelector('.chip-dot').style.background=isChecked?COLORS[f]:'#ccc';
-  }
+  // 重新渲染選擇器確保所有 chip 狀態正確
+  renderSelector();
   // 重繪圖表
   if(tab==='chart')buildChart(currentPeriod);
   else if(tab==='etf')buildEtfChart(currentPeriod);
