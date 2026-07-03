@@ -60,7 +60,23 @@
     .pie-pct { font-weight: 500; }
     .footnote { font-size: 11px; color: #888780; margin-top: 10px; }
     .no-selection { text-align: center; padding: 3rem; color: #888780; font-size: 13px; }
-    @media (max-width: 600px) {
+
+    /* 畫線工具列 */
+    .draw-toolbar { display:none; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 0 10px; border-bottom:0.5px solid rgba(0,0,0,0.08); margin-bottom:1rem; }
+    .draw-toolbar.visible { display:flex; }
+    .draw-btn { padding:4px 12px; font-size:12px; border-radius:8px; border:0.5px solid rgba(0,0,0,0.2); background:none; cursor:pointer; color:#5F5E5A; transition:all 0.15s; user-select:none; }
+    .draw-btn.active { background:#2C2C2A; color:#fff; border-color:#2C2C2A; }
+    .draw-btn:hover:not(.active) { background:rgba(0,0,0,0.05); }
+    .draw-sep { width:1px; height:20px; background:rgba(0,0,0,0.12); margin:0 2px; }
+    .color-dot { width:18px; height:18px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:all 0.15s; flex-shrink:0; }
+    .color-dot.active { border-color:#2C2C2A; transform:scale(1.2); }
+    .draw-mode-toggle { padding:4px 12px; font-size:12px; border-radius:8px; border:0.5px solid rgba(0,0,0,0.2); background:none; cursor:pointer; color:#5F5E5A; transition:all 0.15s; }
+    .draw-mode-toggle.on { background:#EF9F27; color:#fff; border-color:#EF9F27; font-weight:500; }
+
+    /* 畫線 canvas 疊層 */
+    .chart-wrap { position: relative; height: 300px; margin-bottom: 0.5rem; }
+    .draw-canvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }
+    .draw-canvas.active { pointer-events:all; cursor:crosshair; }
       .container { padding: 1.25rem 1rem; }
       .holdings-grid { grid-template-columns: 1fr; }
     }
@@ -95,18 +111,39 @@
   <!-- 基金選擇器 -->
   <div id="fundSelector" class="fund-selector"></div>
 
+  <!-- 畫線工具列 -->
+  <div class="draw-toolbar" id="drawToolbar">
+    <button class="draw-mode-toggle" id="drawModeBtn" onclick="toggleDrawMode()">✏️ 畫線：關</button>
+    <div class="draw-sep"></div>
+    <button class="draw-btn active" id="btnLine" onclick="setDrawType('line')">／ 斜線</button>
+    <button class="draw-btn" id="btnHoriz" onclick="setDrawType('horiz')">━ 水平線</button>
+    <div class="draw-sep"></div>
+    <span style="font-size:12px;color:#888780;">顏色：</span>
+    <span class="color-dot active" style="background:#E24B4A;" onclick="setDrawColor('#E24B4A')" title="紅"></span>
+    <span class="color-dot" style="background:#1D9E75;" onclick="setDrawColor('#1D9E75')" title="綠"></span>
+    <span class="color-dot" style="background:#EF9F27;" onclick="setDrawColor('#EF9F27')" title="黃"></span>
+    <div class="draw-sep"></div>
+    <button class="draw-btn" onclick="clearAllLines()">🗑 清除全部</button>
+  </div>
+
   <!-- 走勢比較 -->
   <div id="chartSection">
     <div class="legend" id="legend"></div>
     <div class="metrics" id="metrics"></div>
-    <div class="chart-wrap"><canvas id="lineChart" role="img" aria-label="基金淨值相對報酬走勢折線圖"></canvas></div>
+    <div class="chart-wrap">
+      <canvas id="lineChart" role="img" aria-label="基金淨值相對報酬走勢折線圖"></canvas>
+      <canvas id="drawCanvas" class="draw-canvas"></canvas>
+    </div>
   </div>
 
   <!-- 與ETF比較 -->
   <div id="etfSection" style="display:none;">
     <div class="legend" id="etfLegend"></div>
     <div class="metrics" id="etfMetrics"></div>
-    <div class="chart-wrap"><canvas id="etfChart" role="img" aria-label="基金與ETF淨值相對報酬走勢折線圖"></canvas></div>
+    <div class="chart-wrap">
+      <canvas id="etfChart" role="img" aria-label="基金與ETF淨值相對報酬走勢折線圖"></canvas>
+      <canvas id="drawCanvasEtf" class="draw-canvas"></canvas>
+    </div>
   </div>
 
   <!-- 持股分配 -->
@@ -284,9 +321,11 @@ function switchTab(tab){
   const showControls=tab!=='holdings';
   document.getElementById('periodBtns').style.display=showControls?'flex':'none';
   document.getElementById('dateRangeRow').style.display=showControls?'flex':'none';
+  document.getElementById('drawToolbar').style.display=showControls?'':'none';
+  pendingPoint=null;
   renderSelector();
-  if(tab==='chart')buildChart(currentPeriod);
-  else if(tab==='etf')buildEtfChart(currentPeriod);
+  if(tab==='chart'){buildChart(currentPeriod);syncDrawCanvas();}
+  else if(tab==='etf'){buildEtfChart(currentPeriod);syncDrawCanvas();}
   else if(tab==='holdings'&&!holdingsInit){buildHoldings();holdingsInit=true;}
 }
 
@@ -347,7 +386,210 @@ function buildHoldings(){
   });
 }
 
-// ── 初始化 ────────────────────────────────────────────────────────
+// ── 畫線引擎 ──────────────────────────────────────────────────────
+let drawMode=false;
+let drawType='line';      // 'line' | 'horiz'
+let drawColor='#E24B4A';
+// 各 tab 各自儲存線條
+const drawnLines={chart:[],etf:[]};
+// 畫線暫存
+let pendingPoint=null;    // 方案 B 第一個點
+let longPressTimer=null;
+
+function getActiveDrawCanvas(){
+  return document.getElementById(currentTab==='etf'?'drawCanvasEtf':'drawCanvas');
+}
+function getActiveLines(){ return drawnLines[currentTab==='etf'?'etf':'chart']; }
+
+// ── 開關畫線模式 ──
+function toggleDrawMode(){
+  drawMode=!drawMode;
+  const btn=document.getElementById('drawModeBtn');
+  btn.textContent=drawMode?'✏️ 畫線：開':'✏️ 畫線：關';
+  btn.classList.toggle('on',drawMode);
+  pendingPoint=null;
+  ['drawCanvas','drawCanvasEtf'].forEach(id=>{
+    const c=document.getElementById(id);
+    if(c) c.classList.toggle('active',drawMode);
+  });
+  redrawLines();
+}
+
+function setDrawType(t){
+  drawType=t;
+  pendingPoint=null;
+  document.getElementById('btnLine').classList.toggle('active',t==='line');
+  document.getElementById('btnHoriz').classList.toggle('active',t==='horiz');
+  redrawLines();
+}
+
+function setDrawColor(c){
+  drawColor=c;
+  document.querySelectorAll('.color-dot').forEach(d=>{
+    d.classList.toggle('active',d.title==={'#E24B4A':'紅','#1D9E75':'綠','#EF9F27':'黃'}[c]);
+  });
+}
+
+// ── 座標換算（畫線 canvas → 圖表比例值）──
+function canvasToChartPct(canvas,x,y){
+  const rect=canvas.getBoundingClientRect();
+  const px=x-rect.left, py=y-rect.top;
+  return{px,py,rx:px/rect.width,ry:py/rect.height};
+}
+
+// ── 繪製所有已儲存的線條 ──
+function redrawLines(){
+  const canvas=getActiveDrawCanvas();
+  if(!canvas)return;
+  const rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*devicePixelRatio;
+  canvas.height=rect.height*devicePixelRatio;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+  const W=rect.width, H=rect.height;
+
+  getActiveLines().forEach(l=>{
+    ctx.save();
+    ctx.strokeStyle=l.color;
+    ctx.lineWidth=1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    if(l.type==='horiz'){
+      const y=l.ry*H;
+      ctx.moveTo(0,y); ctx.lineTo(W,y);
+    } else {
+      ctx.moveTo(l.rx1*W,l.ry1*H);
+      ctx.lineTo(l.rx2*W,l.ry2*H);
+    }
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // 畫第一個待定點
+  if(pendingPoint&&drawMode&&drawType==='line'){
+    ctx.save();
+    ctx.fillStyle=drawColor;
+    ctx.beginPath();
+    ctx.arc(pendingPoint.rx*W,pendingPoint.ry*H,4,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ── 點選事件（電腦與觸控共用）──
+function handleDrawClick(canvas,clientX,clientY){
+  if(!drawMode)return;
+  const {px,py,rx,ry}=canvasToChartPct(canvas,clientX,clientY);
+
+  if(drawType==='horiz'){
+    getActiveLines().push({type:'horiz',ry,color:drawColor});
+    redrawLines();
+    return;
+  }
+
+  // 方案 B：斜線需兩點
+  if(!pendingPoint){
+    pendingPoint={rx,ry};
+    redrawLines();
+  } else {
+    getActiveLines().push({type:'line',rx1:pendingPoint.rx,ry1:pendingPoint.ry,rx2:rx,ry2:ry,color:drawColor});
+    pendingPoint=null;
+    redrawLines();
+  }
+}
+
+// ── 找最近線條（用於刪除）──
+function findNearestLine(canvas,clientX,clientY){
+  const {rx,ry}=canvasToChartPct(canvas,clientX,clientY);
+  const lines=getActiveLines();
+  let best=-1, bestDist=Infinity;
+  const rect=canvas.getBoundingClientRect();
+  const W=rect.width, H=rect.height;
+  lines.forEach((l,i)=>{
+    let dist;
+    if(l.type==='horiz'){
+      dist=Math.abs(ry-l.ry)*H;
+    } else {
+      // 點到線段距離
+      const x1=l.rx1*W,y1=l.ry1*H,x2=l.rx2*W,y2=l.ry2*H;
+      const px=rx*W, py=ry*H;
+      const dx=x2-x1, dy=y2-y1;
+      const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/(dx*dx+dy*dy)));
+      dist=Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
+    }
+    if(dist<bestDist){bestDist=dist;best=i;}
+  });
+  return bestDist<18?best:-1;
+}
+
+function deleteLine(canvas,clientX,clientY){
+  const idx=findNearestLine(canvas,clientX,clientY);
+  if(idx>=0){getActiveLines().splice(idx,1);redrawLines();}
+}
+
+function clearAllLines(){
+  const key=currentTab==='etf'?'etf':'chart';
+  drawnLines[key]=[];
+  pendingPoint=null;
+  redrawLines();
+}
+
+// ── 綁定事件 ──
+function bindDrawEvents(canvasId){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+
+  // 電腦：點選 & 雙擊刪除
+  canvas.addEventListener('click',e=>{
+    if(!drawMode)return;
+    handleDrawClick(canvas,e.clientX,e.clientY);
+  });
+  canvas.addEventListener('dblclick',e=>{
+    if(!drawMode)return;
+    e.preventDefault();
+    deleteLine(canvas,e.clientX,e.clientY);
+  });
+
+  // 觸控：tap 畫線 & 長按刪除
+  canvas.addEventListener('touchstart',e=>{
+    if(!drawMode)return;
+    e.preventDefault();
+    const t=e.touches[0];
+    longPressTimer=setTimeout(()=>{
+      longPressTimer=null;
+      deleteLine(canvas,t.clientX,t.clientY);
+    },500);
+  },{passive:false});
+  canvas.addEventListener('touchend',e=>{
+    if(!drawMode)return;
+    e.preventDefault();
+    if(longPressTimer){
+      clearTimeout(longPressTimer);longPressTimer=null;
+      const t=e.changedTouches[0];
+      handleDrawClick(canvas,t.clientX,t.clientY);
+    }
+  },{passive:false});
+  canvas.addEventListener('touchmove',e=>{
+    if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}
+  },{passive:false});
+}
+
+// ── 圖表重繪時同步更新畫線 canvas 尺寸 ──
+function syncDrawCanvas(){
+  setTimeout(()=>{
+    redrawLines();
+  },100);
+}
+
+// 初始化畫線事件
+window.addEventListener('load',()=>{
+  bindDrawEvents('drawCanvas');
+  bindDrawEvents('drawCanvasEtf');
+  window.addEventListener('resize',()=>redrawLines());
+  // 顯示工具列
+  document.getElementById('drawToolbar').classList.add('visible');
+});
+
 document.getElementById('periodBtns').innerHTML=[['3M','3個月'],['6M','6個月'],['1Y','1年']].map(([k,l])=>`<button class="period-btn${k==='1Y'?' active':''}" data-period="${k}" onclick="setPeriod('${k}')">${l}</button>`).join('');
 
 fetch('data/nav.json?t='+Date.now())
