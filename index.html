@@ -77,6 +77,8 @@
     .chart-wrap { position: relative; height: 300px; margin-bottom: 0.5rem; }
     .draw-canvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }
     .draw-canvas.active { pointer-events:all; cursor:crosshair; }
+
+    @media (max-width: 640px) {
       .container { padding: 1.25rem 1rem; }
       .holdings-grid { grid-template-columns: 1fr; }
     }
