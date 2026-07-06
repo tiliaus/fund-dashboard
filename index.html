@@ -469,6 +469,51 @@ function redrawLines(){
     }
     ctx.stroke();
     ctx.restore();
+
+    // ── 線條標籤 ──
+    const inst=currentTab==='etf'?etfInst:lineInst;
+    if(inst){
+      ctx.save();
+      ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
+      ctx.textBaseline='middle';
+      if(l.type==='horiz'){
+        // 水平線：顯示 Y 軸報酬率
+        const y=l.ry*H;
+        const yVal=inst.scales.y.getValueForPixel(y);
+        const yPct=(yVal-100).toFixed(1);
+        const label=(parseFloat(yPct)>=0?'+':'')+yPct+'%';
+        const area=inst.chartArea;
+        const tw=ctx.measureText(label).width;
+        ctx.fillStyle='rgba(255,255,255,0.92)';
+        ctx.fillRect(area.right-tw-8,y-9,tw+6,18);
+        ctx.strokeStyle='rgba(0,0,0,0.1)';
+        ctx.lineWidth=0.5;ctx.setLineDash([]);
+        ctx.strokeRect(area.right-tw-8,y-9,tw+6,18);
+        ctx.fillStyle=l.color;
+        ctx.fillText(label,area.right-tw-5,y);
+      } else {
+        // 斜線：顯示 A→B 實際報酬率
+        const yA=inst.scales.y.getValueForPixel(l.ry1*H);
+        const yB=inst.scales.y.getValueForPixel(l.ry2*H);
+        if(yA>0){
+          const pct=((yB/yA)-1)*100;
+          const label=(pct>=0?'+':'')+pct.toFixed(1)+'%';
+          const midX=(l.rx1+l.rx2)/2*W;
+          const midY=(l.ry1+l.ry2)/2*H;
+          const tw=ctx.measureText(label).width;
+          let lx=midX+8;
+          if(lx+tw+6>W)lx=midX-tw-12;
+          ctx.fillStyle='rgba(255,255,255,0.92)';
+          ctx.fillRect(lx-3,midY-9,tw+6,18);
+          ctx.strokeStyle='rgba(0,0,0,0.1)';
+          ctx.lineWidth=0.5;ctx.setLineDash([]);
+          ctx.strokeRect(lx-3,midY-9,tw+6,18);
+          ctx.fillStyle=l.color;
+          ctx.fillText(label,lx,midY);
+        }
+      }
+      ctx.restore();
+    }
   });
 
   // 畫第一個待定點
