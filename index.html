@@ -257,6 +257,7 @@ function buildChart(period){
   const ref={current:lineInst};
   const{dates,baseNav}=buildLineChartCore('lineChart',keys,period,ref);
   lineInst=ref.current;
+  chartDates.chart=dates;
   updateLegendMetrics('legend','metrics',keys,dates,baseNav);
 }
 
@@ -271,6 +272,7 @@ function buildEtfChart(period){
   const ref={current:etfInst};
   const{dates,baseNav}=buildLineChartCore('etfChart',keys,period,ref);
   etfInst=ref.current;
+  chartDates.etf=dates;
   updateLegendMetrics('etfLegend','etfMetrics',keys,dates,baseNav);
 }
 
@@ -397,6 +399,8 @@ const drawnLines={chart:[],etf:[]};
 // 畫線暫存
 let pendingPoint=null;    // 方案 B 第一個點
 let longPressTimer=null;
+let crosshairPos=null;    // 十字準線 {clientX,clientY}
+const chartDates={chart:[],etf:[]};  // 各 tab 的日期陣列
 
 function getActiveDrawCanvas(){
   return document.getElementById(currentTab==='etf'?'drawCanvasEtf':'drawCanvas');
@@ -476,6 +480,53 @@ function redrawLines(){
     ctx.fill();
     ctx.restore();
   }
+
+  // ── 十字準線（畫線模式時顯示日期與報酬率）──
+  if(crosshairPos&&drawMode){
+    const inst=currentTab==='etf'?etfInst:lineInst;
+    if(inst){
+      const chartCanvas=document.getElementById(currentTab==='etf'?'etfChart':'lineChart');
+      const chartRect=chartCanvas.getBoundingClientRect();
+      const area=inst.chartArea;
+      const mx=crosshairPos.clientX-chartRect.left;
+      const my=crosshairPos.clientY-chartRect.top;
+      if(mx>=area.left&&mx<=area.right&&my>=area.top&&my<=area.bottom){
+        const xIdx=Math.round(inst.scales.x.getValueForPixel(mx));
+        const dates=chartDates[currentTab==='etf'?'etf':'chart'];
+        const dateStr=(xIdx>=0&&xIdx<dates.length)?dates[xIdx]:'';
+        const yVal=inst.scales.y.getValueForPixel(my);
+        const yPct=(yVal-100).toFixed(1);
+        const yLabel=(parseFloat(yPct)>=0?'+':'')+yPct+'%';
+        // 虛線十字
+        ctx.save();
+        ctx.strokeStyle='rgba(0,0,0,0.25)';
+        ctx.lineWidth=0.5;
+        ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.moveTo(mx,area.top);ctx.lineTo(mx,area.bottom);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(area.left,my);ctx.lineTo(area.right,my);ctx.stroke();
+        ctx.restore();
+        // 標籤
+        if(dateStr){
+          const label=dateStr+'　'+yLabel;
+          ctx.save();
+          ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
+          const tw=ctx.measureText(label).width;
+          let lx=mx+10;
+          if(lx+tw+8>area.right)lx=mx-tw-16;
+          const ly=area.top+4;
+          ctx.fillStyle='rgba(255,255,255,0.92)';
+          ctx.fillRect(lx-3,ly-1,tw+6,16);
+          ctx.strokeStyle='rgba(0,0,0,0.12)';
+          ctx.lineWidth=0.5;ctx.setLineDash([]);
+          ctx.strokeRect(lx-3,ly-1,tw+6,16);
+          ctx.fillStyle='#2C2C2A';
+          ctx.textBaseline='top';
+          ctx.fillText(label,lx,ly+1);
+          ctx.restore();
+        }
+      }
+    }
+  }
 }
 
 // ── 點選事件（電腦與觸控共用）──
@@ -550,6 +601,17 @@ function bindDrawEvents(canvasId){
     if(!drawMode)return;
     e.preventDefault();
     deleteLine(canvas,e.clientX,e.clientY);
+  });
+
+  // 電腦：十字準線
+  canvas.addEventListener('mousemove',e=>{
+    if(!drawMode){crosshairPos=null;return;}
+    crosshairPos={clientX:e.clientX,clientY:e.clientY};
+    redrawLines();
+  });
+  canvas.addEventListener('mouseleave',()=>{
+    crosshairPos=null;
+    redrawLines();
   });
 
   // 觸控：tap 畫線 & 長按刪除
