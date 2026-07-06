@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 
 # ── 基金設定 ──────────────────────────────────────────────────────
 FUND_KEYS = ['安聯台灣科技', '安聯台灣大壩', '統一奔騰', '統一黑馬']
-ETF_KEYS  = ['00981A']
+ETF_KEYS  = ['00981A', '00990A', '00982A']
 ALL_KEYS  = FUND_KEYS + ETF_KEYS
 NAV_FILE  = 'data/nav.json'
 
