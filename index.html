@@ -161,6 +161,15 @@ const ETF_IDS=['00981A','00990A','00982A'];
 const ALL_KEYS=[...FUND_KEYS,...ETF_IDS];
 const COLORS={'安聯台灣科技':'#378ADD','安聯台灣大壩':'#1D9E75','統一奔騰':'#BA7517','統一黑馬':'#D4537E','00981A':'#7C3AED','00990A':'#E07B42','00982A':'#2BA5B5'};
 const LABELS={'00981A':'00981A ETF','00990A':'00990A ETF','00982A':'00982A ETF'};
+const FUND_URLS={
+  '安聯台灣科技':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACDD04',
+  '安聯台灣大壩':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACDD01',
+  '統一奔騰':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACPS10',
+  '統一黑馬':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACPS02',
+  '00981A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00981A.TW',
+  '00990A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00990A.TW',
+  '00982A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00982A.TW'
+};
 const PIE_CLR=['#378ADD','#1D9E75','#EF9F27','#D4537E','#9F77DD','#B4B2A9'];
 
 let holdingsData={}, fundData=null, currentPeriod='1Y';
@@ -240,9 +249,9 @@ function updateLegendMetrics(legendId,metricsId,keys,dates,baseNav){
   document.getElementById(metricsId).innerHTML=keys.map(f=>{
     const lastDate=dates.filter(d=>fundData[f]?.[d]!=null).pop();
     const last=lastDate?fundData[f][lastDate]:null;
-    if(!last||!baseNav[f])return`<div class="metric-card" style="border-left-color:${COLORS[f]};"><div class="metric-label">${LABELS[f]||f}</div><div class="metric-value" style="color:#888;">N/A</div></div>`;
+    if(!last||!baseNav[f])return`<div class="metric-card" style="border-left-color:${COLORS[f]};cursor:pointer;" onclick="window.open('${FUND_URLS[f]||''}','_blank')"><div class="metric-label">${LABELS[f]||f}</div><div class="metric-value" style="color:#888;">N/A</div></div>`;
     const ret=(last/baseNav[f]-1)*100;const clr=ret>=0?'#1D9E75':'#E24B4A';
-    return`<div class="metric-card" style="border-left-color:${COLORS[f]};"><div class="metric-label">${LABELS[f]||f}</div><div class="metric-value" style="color:${clr};">${ret>=0?'+':''}${ret.toFixed(1)}%</div><div class="metric-nav">淨值 ${last.toFixed(2)}</div></div>`;
+    return`<div class="metric-card" style="border-left-color:${COLORS[f]};cursor:pointer;" onclick="window.open('${FUND_URLS[f]||''}','_blank')"><div class="metric-label">${LABELS[f]||f}</div><div class="metric-value" style="color:${clr};">${ret>=0?'+':''}${ret.toFixed(1)}%</div><div class="metric-nav">淨值 ${last.toFixed(2)}</div></div>`;
   }).join('');
 }
 
