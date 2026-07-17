@@ -603,18 +603,46 @@ function redrawLines(){
         const dates=chartDates[getDrawTab()];
         const dateStr=(xIdx>=0&&xIdx<dates.length)?dates[xIdx].slice(5):'';
         const snappedX=inst.scales.x.getPixelForValue(xIdx);
-        const yVal=inst.scales.y.getValueForPixel(my);
-        const yPct=(yVal-100).toFixed(1);
-        const yLabel=(parseFloat(yPct)>=0?'+':'')+yPct+'%';
+
+        // Y 軸吸附到最近的線
+        let snappedY=my, snapName='', snapPct='';
+        let bestDist=Infinity;
+        inst.data.datasets.forEach(ds=>{
+          const val=ds.data[xIdx];
+          if(val==null)return;
+          const py=inst.scales.y.getPixelForValue(val);
+          const dist=Math.abs(py-my);
+          if(dist<bestDist){
+            bestDist=dist;
+            snappedY=py;
+            snapName=ds.label;
+            const p=(val-100).toFixed(1);
+            snapPct=(parseFloat(p)>=0?'+':'')+p+'%';
+          }
+        });
+
         ctx.save();
         ctx.strokeStyle='rgba(0,0,0,0.25)';
         ctx.lineWidth=0.5;
         ctx.setLineDash([4,3]);
         ctx.beginPath();ctx.moveTo(snappedX,area.top);ctx.lineTo(snappedX,area.bottom);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(area.left,my);ctx.lineTo(area.right,my);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(area.left,snappedY);ctx.lineTo(area.right,snappedY);ctx.stroke();
         ctx.restore();
+
+        // 吸附點圓點
+        if(snapName){
+          const ds=inst.data.datasets.find(d=>d.label===snapName);
+          const dotColor=ds?ds.borderColor:'#2C2C2A';
+          ctx.save();
+          ctx.fillStyle=dotColor;
+          ctx.beginPath();
+          ctx.arc(snappedX,snappedY,4,0,Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+        }
+
         if(dateStr){
-          const label=dateStr+'　'+yLabel;
+          const label=dateStr+'　'+(snapName||'')+'　'+snapPct;
           ctx.save();
           ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
           const tw=ctx.measureText(label).width;
