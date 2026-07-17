@@ -240,7 +240,12 @@ function buildLineChartCore(canvasId,keys,period,instRef){
     type:'line',data:{labels:dates.map(d=>d.slice(5)),datasets},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',titleColor:'#2C2C2A',bodyColor:'#5F5E5A',borderColor:'#D3D1C7',borderWidth:1,padding:10,
-        callbacks:{label:ctx=>{if(ctx.raw==null)return'';const v=(ctx.raw-100).toFixed(2);return` ${ctx.dataset.label}: ${v>=0?'+':''}${v}%`;}}}},
+        callbacks:{label:ctx=>{if(ctx.raw==null)return'';const v=(ctx.raw-100).toFixed(2);
+          const fk=ALL_KEYS.find(k=>(LABELS[k]||k)===ctx.dataset.label)||ctx.dataset.label;
+          const dt=dates[ctx.dataIndex];
+          const nav=dt&&fundData[fk]?fundData[fk][dt]:null;
+          const ns=nav?'（淨值 '+nav.toFixed(2)+'）':'';
+          return` ${ctx.dataset.label}: ${v>=0?'+':''}${v}%${ns}`;}}}},
       scales:{
         x:{grid:{display:false},border:{color:'#D3D1C7'},ticks:{color:'#888780',font:{size:11},maxTicksLimit:maxT,maxRotation:0}},
         y:{grid:{color:'rgba(0,0,0,0.05)'},border:{display:false},ticks:{color:'#888780',font:{size:11},callback:v=>{const d=Math.round(v-100);return(d>=0?'+':'')+d+'%';}}}
@@ -596,7 +601,8 @@ function redrawLines(){
       if(mx>=area.left&&mx<=area.right&&my>=area.top&&my<=area.bottom){
         const xIdx=Math.round(inst.scales.x.getValueForPixel(mx));
         const dates=chartDates[getDrawTab()];
-        const dateStr=(xIdx>=0&&xIdx<dates.length)?dates[xIdx]:'';
+        const dateStr=(xIdx>=0&&xIdx<dates.length)?dates[xIdx].slice(5):'';
+        const snappedX=inst.scales.x.getPixelForValue(xIdx);
         const yVal=inst.scales.y.getValueForPixel(my);
         const yPct=(yVal-100).toFixed(1);
         const yLabel=(parseFloat(yPct)>=0?'+':'')+yPct+'%';
@@ -604,7 +610,7 @@ function redrawLines(){
         ctx.strokeStyle='rgba(0,0,0,0.25)';
         ctx.lineWidth=0.5;
         ctx.setLineDash([4,3]);
-        ctx.beginPath();ctx.moveTo(mx,area.top);ctx.lineTo(mx,area.bottom);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(snappedX,area.top);ctx.lineTo(snappedX,area.bottom);ctx.stroke();
         ctx.beginPath();ctx.moveTo(area.left,my);ctx.lineTo(area.right,my);ctx.stroke();
         ctx.restore();
         if(dateStr){
@@ -612,8 +618,8 @@ function redrawLines(){
           ctx.save();
           ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
           const tw=ctx.measureText(label).width;
-          let lx=mx+10;
-          if(lx+tw+8>area.right)lx=mx-tw-16;
+          let lx=snappedX+10;
+          if(lx+tw+8>area.right)lx=snappedX-tw-16;
           const ly=area.top+4;
           ctx.fillStyle='rgba(255,255,255,0.92)';
           ctx.fillRect(lx-3,ly-1,tw+6,16);
