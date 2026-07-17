@@ -105,12 +105,13 @@
     </div>
   </div>
   <div class="tabs">
-    <button class="tab-btn active" id="tabChart" onclick="switchTab('chart')">走勢比較</button>
-    <button class="tab-btn" id="tabEtf" onclick="switchTab('etf')">與ETF比較</button>
-    <button class="tab-btn" id="tabHoldings" onclick="switchTab('holdings')">持股分配</button>
+    <button class="tab-btn active" id="tabChart" onclick="switchTab('chart')">基金淨值走勢</button>
+    <button class="tab-btn" id="tabHoldings" onclick="switchTab('holdings')">基金持股內容</button>
+    <button class="tab-btn" id="tabEtf" onclick="switchTab('etf')">ETF淨值走勢</button>
+    <button class="tab-btn" id="tabCustom" onclick="switchTab('custom')">自選比較</button>
   </div>
 
-  <!-- 基金選擇器 -->
+  <!-- 基金/ETF 選擇器 -->
   <div id="fundSelector" class="fund-selector"></div>
 
   <!-- 畫線工具列 -->
@@ -128,30 +129,41 @@
     <button class="draw-btn" onclick="clearAllLines()">🗑 清除全部</button>
   </div>
 
-  <!-- 走勢比較 -->
+  <!-- Tab 1: 基金淨值走勢 -->
   <div id="chartSection">
     <div class="legend" id="legend"></div>
     <div class="metrics" id="metrics"></div>
     <div class="chart-wrap">
-      <canvas id="lineChart" role="img" aria-label="基金淨值相對報酬走勢折線圖"></canvas>
+      <canvas id="lineChart" role="img" aria-label="基金淨值走勢折線圖"></canvas>
       <canvas id="drawCanvas" class="draw-canvas"></canvas>
     </div>
   </div>
 
-  <!-- 與ETF比較 -->
+  <!-- Tab 2: 基金持股內容 -->
+  <div id="holdingsSection" style="display:none;">
+    <div class="holdings-grid" id="holdingsGrid"></div>
+    <p class="footnote">＊持股資料來源：MoneyDJ，每月自動更新</p>
+  </div>
+
+  <!-- Tab 3: ETF淨值走勢 -->
   <div id="etfSection" style="display:none;">
     <div class="legend" id="etfLegend"></div>
     <div class="metrics" id="etfMetrics"></div>
     <div class="chart-wrap">
-      <canvas id="etfChart" role="img" aria-label="基金與ETF淨值相對報酬走勢折線圖"></canvas>
+      <canvas id="etfChart" role="img" aria-label="ETF淨值走勢折線圖"></canvas>
       <canvas id="drawCanvasEtf" class="draw-canvas"></canvas>
     </div>
   </div>
 
-  <!-- 持股分配 -->
-  <div id="holdingsSection" style="display:none;">
-    <div class="holdings-grid" id="holdingsGrid"></div>
-    <p class="footnote">＊持股資料來源：MoneyDJ，每月自動更新</p>
+  <!-- Tab 4: 自選比較 -->
+  <div id="customSection" style="display:none;">
+    <div class="legend" id="customLegend"></div>
+    <div class="metrics" id="customMetrics"></div>
+    <div class="chart-wrap">
+      <canvas id="customChart" role="img" aria-label="自選比較走勢折線圖"></canvas>
+      <canvas id="drawCanvasCustom" class="draw-canvas"></canvas>
+    </div>
+    <div class="no-selection" id="customEmpty">請選擇要比較的基金或 ETF</div>
   </div>
 </div>
 
@@ -175,13 +187,14 @@ const PIE_CLR=['#378ADD','#1D9E75','#EF9F27','#D4537E','#9F77DD','#B4B2A9'];
 
 let holdingsData={}, fundData=null, currentPeriod='1Y';
 let customDateFrom='', customDateTo='';
-let lineInst=null, etfInst=null, holdingsInit=false;
+let lineInst=null, etfInst=null, customInst=null, holdingsInit=false;
 let currentTab='chart';
 
 // 各 tab 的勾選狀態
 const selected={
-  chart: new Set(FUND_KEYS),
-  etf:   new Set(ALL_KEYS)
+  chart:  new Set(FUND_KEYS),
+  etf:    new Set(ETF_IDS),
+  custom: new Set()
 };
 
 // ── 日期工具 ──────────────────────────────────────────────────────
@@ -276,7 +289,7 @@ function buildEtfChart(period){
   if(keys.length===0){
     if(etfInst){etfInst.destroy();etfInst=null;}
     document.getElementById('etfLegend').innerHTML='';
-    document.getElementById('etfMetrics').innerHTML='<div class="no-selection">請至少選擇一檔基金或ETF</div>';
+    document.getElementById('etfMetrics').innerHTML='<div class="no-selection">請至少選擇一檔 ETF</div>';
     return;
   }
   const ref={current:etfInst};
@@ -286,6 +299,24 @@ function buildEtfChart(period){
   updateLegendMetrics('etfLegend','etfMetrics',keys,dates,baseNav);
 }
 
+function buildCustomChart(period){
+  const keys=[...selected.custom];
+  const emptyEl=document.getElementById('customEmpty');
+  if(keys.length===0){
+    if(customInst){customInst.destroy();customInst=null;}
+    document.getElementById('customLegend').innerHTML='';
+    document.getElementById('customMetrics').innerHTML='';
+    emptyEl.style.display='';
+    return;
+  }
+  emptyEl.style.display='none';
+  const ref={current:customInst};
+  const{dates,baseNav}=buildLineChartCore('customChart',keys,period,ref);
+  customInst=ref.current;
+  chartDates.custom=dates;
+  updateLegendMetrics('customLegend','customMetrics',keys,dates,baseNav);
+}
+
 // ── 基金選擇器 ────────────────────────────────────────────────────
 function renderSelector(){
   const tab=currentTab;
@@ -293,7 +324,7 @@ function renderSelector(){
   if(tab==='holdings'){el.style.display='none';return;}
   el.style.display='flex';
 
-  const pool=tab==='etf'?ALL_KEYS:FUND_KEYS;
+  const pool=tab==='chart'?FUND_KEYS:tab==='etf'?ETF_IDS:ALL_KEYS;
   const sel=selected[tab];
 
   el.innerHTML=pool.map(f=>{
@@ -313,48 +344,60 @@ function toggleFund(f){
   const tab=currentTab;
   const sel=selected[tab];
   if(sel.has(f)){
-    if(sel.size<=1)return; // 至少保留一檔
+    // 自選比較允許全部取消；其他 tab 至少保留一檔
+    if(tab!=='custom'&&sel.size<=1)return;
     sel.delete(f);
   } else {
     sel.add(f);
   }
-  // 重新渲染選擇器確保所有 chip 狀態正確
   renderSelector();
-  // 重繪圖表
   if(tab==='chart')buildChart(currentPeriod);
   else if(tab==='etf')buildEtfChart(currentPeriod);
+  else if(tab==='custom')buildCustomChart(currentPeriod);
 }
 
 // ── Tab 切換 ──────────────────────────────────────────────────────
+const TAB_SECTIONS={chart:'chartSection',holdings:'holdingsSection',etf:'etfSection',custom:'customSection'};
+const TAB_IDS={chart:'tabChart',holdings:'tabHoldings',etf:'tabEtf',custom:'tabCustom'};
+
 function switchTab(tab){
   currentTab=tab;
-  ['chart','etf','holdings'].forEach(t=>{
-    document.getElementById(t==='chart'?'chartSection':t==='etf'?'etfSection':'holdingsSection').style.display=t===tab?'':'none';
-    document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active',t===tab);
+  Object.entries(TAB_SECTIONS).forEach(([t,id])=>{
+    document.getElementById(id).style.display=t===tab?'':'none';
   });
-  const showControls=tab!=='holdings';
-  document.getElementById('periodBtns').style.display=showControls?'flex':'none';
-  document.getElementById('dateRangeRow').style.display=showControls?'flex':'none';
-  document.getElementById('drawToolbar').style.display=showControls?'':'none';
+  Object.entries(TAB_IDS).forEach(([t,id])=>{
+    document.getElementById(id).classList.toggle('active',t===tab);
+  });
+  const hasChart=tab!=='holdings';
+  document.getElementById('periodBtns').style.display=hasChart?'flex':'none';
+  document.getElementById('dateRangeRow').style.display=hasChart?'flex':'none';
+  document.getElementById('drawToolbar').style.display=hasChart?'':'none';
+  // 切換 tab 時關閉畫線模式
+  if(drawMode)toggleDrawMode();
   pendingPoint=null;
   renderSelector();
   if(tab==='chart'){buildChart(currentPeriod);syncDrawCanvas();}
   else if(tab==='etf'){buildEtfChart(currentPeriod);syncDrawCanvas();}
+  else if(tab==='custom'){buildCustomChart(currentPeriod);syncDrawCanvas();}
   else if(tab==='holdings'&&!holdingsInit){buildHoldings();holdingsInit=true;}
 }
 
 // ── 期間切換 ──────────────────────────────────────────────────────
+function rebuildCurrentChart(period){
+  if(currentTab==='chart')buildChart(period);
+  else if(currentTab==='etf')buildEtfChart(period);
+  else if(currentTab==='custom')buildCustomChart(period);
+}
+
 function applyDateRange(){
   const from=document.getElementById('dateFrom').value;
   const to=document.getElementById('dateTo').value;
   if(!from||!to){alert('請選擇開始和結束日期');return;}
   if(from>to){alert('開始日期不能晚於結束日期');return;}
   customDateFrom=from; customDateTo=to;
-  // 取消 period 按鈕的 active 狀態
   document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('clearBtn').style.display='';
-  if(currentTab==='chart')buildChart(currentPeriod);
-  else if(currentTab==='etf')buildEtfChart(currentPeriod);
+  rebuildCurrentChart(currentPeriod);
 }
 
 function clearDateRange(){
@@ -362,23 +405,19 @@ function clearDateRange(){
   document.getElementById('dateFrom').value='';
   document.getElementById('dateTo').value='';
   document.getElementById('clearBtn').style.display='none';
-  // 恢復 1Y active
   document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',b.dataset.period==='1Y'));
   currentPeriod='1Y';
-  if(currentTab==='chart')buildChart('1Y');
-  else if(currentTab==='etf')buildEtfChart('1Y');
+  rebuildCurrentChart('1Y');
 }
 
 function setPeriod(p){
   currentPeriod=p;
-  // 清除自訂日期
   customDateFrom=''; customDateTo='';
   document.getElementById('dateFrom').value='';
   document.getElementById('dateTo').value='';
   document.getElementById('clearBtn').style.display='none';
   document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',b.dataset.period===p));
-  if(currentTab==='chart')buildChart(p);
-  else if(currentTab==='etf')buildEtfChart(p);
+  rebuildCurrentChart(p);
 }
 
 // ── 持股分配 ──────────────────────────────────────────────────────
@@ -405,17 +444,26 @@ let drawMode=false;
 let drawType='line';      // 'line' | 'horiz'
 let drawColor='#E24B4A';
 // 各 tab 各自儲存線條
-const drawnLines={chart:[],etf:[]};
+const drawnLines={chart:[],etf:[],custom:[]};
 // 畫線暫存
 let pendingPoint=null;    // 方案 B 第一個點
 let longPressTimer=null;
 let crosshairPos=null;    // 十字準線 {clientX,clientY}
-const chartDates={chart:[],etf:[]};  // 各 tab 的日期陣列
+const chartDates={chart:[],etf:[],custom:[]};  // 各 tab 的日期陣列
 
-function getActiveDrawCanvas(){
-  return document.getElementById(currentTab==='etf'?'drawCanvasEtf':'drawCanvas');
+const DRAW_CANVAS_MAP={chart:'drawCanvas',etf:'drawCanvasEtf',custom:'drawCanvasCustom'};
+
+function getDrawTab(){
+  return(currentTab==='chart'||currentTab==='etf'||currentTab==='custom')?currentTab:'chart';
 }
-function getActiveLines(){ return drawnLines[currentTab==='etf'?'etf':'chart']; }
+function getActiveDrawCanvas(){
+  return document.getElementById(DRAW_CANVAS_MAP[getDrawTab()]);
+}
+function getActiveLines(){ return drawnLines[getDrawTab()]; }
+function getActiveChartInst(){
+  const t=getDrawTab();
+  return t==='etf'?etfInst:t==='custom'?customInst:lineInst;
+}
 
 // ── 開關畫線模式 ──
 function toggleDrawMode(){
@@ -424,7 +472,7 @@ function toggleDrawMode(){
   btn.textContent=drawMode?'✏️ 畫線：開':'✏️ 畫線：關';
   btn.classList.toggle('on',drawMode);
   pendingPoint=null;
-  ['drawCanvas','drawCanvasEtf'].forEach(id=>{
+  Object.values(DRAW_CANVAS_MAP).forEach(id=>{
     const c=document.getElementById(id);
     if(c) c.classList.toggle('active',drawMode);
   });
@@ -446,7 +494,7 @@ function setDrawColor(c){
   });
 }
 
-// ── 座標換算（畫線 canvas → 圖表比例值）──
+// ── 座標換算 ──
 function canvasToChartPct(canvas,x,y){
   const rect=canvas.getBoundingClientRect();
   const px=x-rect.left, py=y-rect.top;
@@ -481,13 +529,12 @@ function redrawLines(){
     ctx.restore();
 
     // ── 線條標籤 ──
-    const inst=currentTab==='etf'?etfInst:lineInst;
+    const inst=getActiveChartInst();
     if(inst){
       ctx.save();
       ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
       ctx.textBaseline='middle';
       if(l.type==='horiz'){
-        // 水平線：顯示 Y 軸報酬率
         const y=l.ry*H;
         const yVal=inst.scales.y.getValueForPixel(y);
         const yPct=(yVal-100).toFixed(1);
@@ -502,7 +549,6 @@ function redrawLines(){
         ctx.fillStyle=l.color;
         ctx.fillText(label,area.right-tw-5,y);
       } else {
-        // 斜線：顯示 A→B 實際報酬率
         const yA=inst.scales.y.getValueForPixel(l.ry1*H);
         const yB=inst.scales.y.getValueForPixel(l.ry2*H);
         if(yA>0){
@@ -538,21 +584,22 @@ function redrawLines(){
 
   // ── 十字準線（畫線模式時顯示日期與報酬率）──
   if(crosshairPos&&drawMode){
-    const inst=currentTab==='etf'?etfInst:lineInst;
+    const inst=getActiveChartInst();
     if(inst){
-      const chartCanvas=document.getElementById(currentTab==='etf'?'etfChart':'lineChart');
+      const chartCanvas=document.getElementById(
+        currentTab==='etf'?'etfChart':currentTab==='custom'?'customChart':'lineChart'
+      );
       const chartRect=chartCanvas.getBoundingClientRect();
       const area=inst.chartArea;
       const mx=crosshairPos.clientX-chartRect.left;
       const my=crosshairPos.clientY-chartRect.top;
       if(mx>=area.left&&mx<=area.right&&my>=area.top&&my<=area.bottom){
         const xIdx=Math.round(inst.scales.x.getValueForPixel(mx));
-        const dates=chartDates[currentTab==='etf'?'etf':'chart'];
+        const dates=chartDates[getDrawTab()];
         const dateStr=(xIdx>=0&&xIdx<dates.length)?dates[xIdx]:'';
         const yVal=inst.scales.y.getValueForPixel(my);
         const yPct=(yVal-100).toFixed(1);
         const yLabel=(parseFloat(yPct)>=0?'+':'')+yPct+'%';
-        // 虛線十字
         ctx.save();
         ctx.strokeStyle='rgba(0,0,0,0.25)';
         ctx.lineWidth=0.5;
@@ -560,7 +607,6 @@ function redrawLines(){
         ctx.beginPath();ctx.moveTo(mx,area.top);ctx.lineTo(mx,area.bottom);ctx.stroke();
         ctx.beginPath();ctx.moveTo(area.left,my);ctx.lineTo(area.right,my);ctx.stroke();
         ctx.restore();
-        // 標籤
         if(dateStr){
           const label=dateStr+'　'+yLabel;
           ctx.save();
@@ -584,18 +630,15 @@ function redrawLines(){
   }
 }
 
-// ── 點選事件（電腦與觸控共用）──
+// ── 點選事件 ──
 function handleDrawClick(canvas,clientX,clientY){
   if(!drawMode)return;
   const {px,py,rx,ry}=canvasToChartPct(canvas,clientX,clientY);
-
   if(drawType==='horiz'){
     getActiveLines().push({type:'horiz',ry,color:drawColor});
     redrawLines();
     return;
   }
-
-  // 方案 B：斜線需兩點
   if(!pendingPoint){
     pendingPoint={rx,ry};
     redrawLines();
@@ -618,12 +661,11 @@ function findNearestLine(canvas,clientX,clientY){
     if(l.type==='horiz'){
       dist=Math.abs(ry-l.ry)*H;
     } else {
-      // 點到線段距離
       const x1=l.rx1*W,y1=l.ry1*H,x2=l.rx2*W,y2=l.ry2*H;
-      const px=rx*W, py=ry*H;
+      const ppx=rx*W, ppy=ry*H;
       const dx=x2-x1, dy=y2-y1;
-      const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/(dx*dx+dy*dy)));
-      dist=Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
+      const t=Math.max(0,Math.min(1,((ppx-x1)*dx+(ppy-y1)*dy)/(dx*dx+dy*dy)));
+      dist=Math.hypot(ppx-(x1+t*dx),ppy-(y1+t*dy));
     }
     if(dist<bestDist){bestDist=dist;best=i;}
   });
@@ -636,8 +678,7 @@ function deleteLine(canvas,clientX,clientY){
 }
 
 function clearAllLines(){
-  const key=currentTab==='etf'?'etf':'chart';
-  drawnLines[key]=[];
+  drawnLines[getDrawTab()]=[];
   pendingPoint=null;
   redrawLines();
 }
@@ -647,7 +688,6 @@ function bindDrawEvents(canvasId){
   const canvas=document.getElementById(canvasId);
   if(!canvas)return;
 
-  // 電腦：點選 & 雙擊刪除
   canvas.addEventListener('click',e=>{
     if(!drawMode)return;
     handleDrawClick(canvas,e.clientX,e.clientY);
@@ -658,7 +698,6 @@ function bindDrawEvents(canvasId){
     deleteLine(canvas,e.clientX,e.clientY);
   });
 
-  // 電腦：十字準線
   canvas.addEventListener('mousemove',e=>{
     if(!drawMode){crosshairPos=null;return;}
     crosshairPos={clientX:e.clientX,clientY:e.clientY};
@@ -669,7 +708,6 @@ function bindDrawEvents(canvasId){
     redrawLines();
   });
 
-  // 觸控：tap 畫線 & 長按刪除
   canvas.addEventListener('touchstart',e=>{
     if(!drawMode)return;
     e.preventDefault();
@@ -704,8 +742,8 @@ function syncDrawCanvas(){
 window.addEventListener('load',()=>{
   bindDrawEvents('drawCanvas');
   bindDrawEvents('drawCanvasEtf');
+  bindDrawEvents('drawCanvasCustom');
   window.addEventListener('resize',()=>redrawLines());
-  // 顯示工具列
   document.getElementById('drawToolbar').classList.add('visible');
 });
 
@@ -718,7 +756,6 @@ fetch('data/nav.json?t='+Date.now())
     document.getElementById('statusMsg').textContent=`淨值更新至 ${json.last_updated||''}　每日自動更新`;
     const exclude=new Set(['last_updated','holdings_updated','holdings_date','holdings']);
     fundData=Object.fromEntries(Object.entries(json).filter(([k])=>!exclude.has(k)));
-    // 設定日期選擇器的最小最大值
     const allDates=Object.values(fundData).flatMap(v=>Object.keys(v)).sort();
     if(allDates.length){
       const minDate=allDates[0].replace(/\//g,'-');
