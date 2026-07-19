@@ -168,20 +168,24 @@
 </div>
 
 <script>
-const FUND_KEYS=['安聯台灣科技','安聯台灣大壩','統一奔騰','統一黑馬','統一全球新科技'];
-const ETF_IDS=['00981A','00990A','00982A'];
+const FUND_KEYS=['安聯台灣科技','安聯台灣大壩','統一奔騰','統一黑馬','統一全球新科技','安聯台灣智慧'];
+const ETF_IDS=['00981A','00990A','00982A','00984A','00993A','00991A'];
 const ALL_KEYS=[...FUND_KEYS,...ETF_IDS];
-const COLORS={'安聯台灣科技':'#378ADD','安聯台灣大壩':'#1D9E75','統一奔騰':'#BA7517','統一黑馬':'#D4537E','統一全球新科技':'#6366F1','00981A':'#7C3AED','00990A':'#E07B42','00982A':'#2BA5B5'};
-const LABELS={'00981A':'00981A ETF','00990A':'00990A ETF','00982A':'00982A ETF'};
+const COLORS={'安聯台灣科技':'#378ADD','安聯台灣大壩':'#1D9E75','統一奔騰':'#BA7517','統一黑馬':'#D4537E','統一全球新科技':'#6366F1','安聯台灣智慧':'#E85D75','00981A':'#7C3AED','00990A':'#E07B42','00982A':'#2BA5B5','00984A':'#059669','00993A':'#DC2626','00991A':'#84CC16'};
+const LABELS={'00981A':'00981A ETF','00990A':'00990A ETF','00982A':'00982A ETF','00984A':'00984A ETF','00993A':'00993A ETF','00991A':'00991A ETF'};
 const FUND_URLS={
   '安聯台灣科技':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACDD04',
   '安聯台灣大壩':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACDD01',
   '統一奔騰':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACPS10',
   '統一黑馬':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACPS02',
   '統一全球新科技':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACPS38',
+  '安聯台灣智慧':'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a=ACDD19',
   '00981A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00981A.TW',
   '00990A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00990A.TW',
-  '00982A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00982A.TW'
+  '00982A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00982A.TW',
+  '00984A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00984A.TW',
+  '00993A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00993A.TW',
+  '00991A':'https://www.moneydj.com/ETF/X/Basic/Basic0003.xdjhtm?etfid=00991A.TW'
 };
 const PIE_CLR=['#378ADD','#1D9E75','#EF9F27','#D4537E','#9F77DD','#B4B2A9'];
 
@@ -322,6 +326,8 @@ function buildCustomChart(period){
   updateLegendMetrics('customLegend','customMetrics',keys,dates,baseNav);
 }
 
+const RISK_LEVEL={'安聯台灣科技':'RR5','安聯台灣大壩':'RR4','統一奔騰':'RR5','統一黑馬':'RR4','統一全球新科技':'RR4','安聯台灣智慧':'RR4'};
+
 // ── 基金選擇器 ────────────────────────────────────────────────────
 function renderSelector(){
   const tab=currentTab;
@@ -336,11 +342,13 @@ function renderSelector(){
     const isChecked=sel.has(f);
     const color=COLORS[f];
     const borderClr=isChecked?color:'#ddd';
+    const rr=RISK_LEVEL[f];
+    const rrHtml=rr?`<span style="font-size:10px;color:#888780;font-weight:400;">${rr}</span>`:'';
     return`<span class="fund-chip ${isChecked?'checked':''}"
       style="border-color:${borderClr};cursor:pointer;"
       onclick="toggleFund('${f}')">
       <span class="chip-dot" style="background:${isChecked?color:'#ccc'};"></span>
-      ${LABELS[f]||f}
+      <span style="display:flex;flex-direction:column;line-height:1.3;">${LABELS[f]||f}${rrHtml}</span>
     </span>`;
   }).join('');
 }
