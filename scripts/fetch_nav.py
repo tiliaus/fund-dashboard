@@ -14,8 +14,8 @@ import time
 from datetime import datetime, timedelta
 
 # ── 基金設定 ──────────────────────────────────────────────────────
-FUND_KEYS = ['安聯台灣科技', '安聯台灣大壩', '統一奔騰', '統一黑馬', '統一全球新科技']
-ETF_KEYS  = ['00981A', '00990A', '00982A']
+FUND_KEYS = ['安聯台灣科技', '安聯台灣大壩', '統一奔騰', '統一黑馬', '統一全球新科技', '安聯台灣智慧']
+ETF_KEYS  = ['00981A', '00990A', '00982A', '00984A', '00993A', '00991A']
 ALL_KEYS  = FUND_KEYS + ETF_KEYS
 NAV_FILE  = 'data/nav.json'
 
@@ -25,6 +25,7 @@ CODES = {
     '統一奔騰':    'ACPS10',
     '統一黑馬':    'ACPS02',
     '統一全球新科技': 'ACPS38',
+    '安聯台灣智慧': 'ACDD19',
 }
 
 NAV_URL      = 'https://www.moneydj.com/funddj/ya/yp010000.djhtm?a={}'
