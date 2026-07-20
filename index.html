@@ -774,9 +774,11 @@ function bindDrawEvents(canvasId){
 
   // Apple Pencil（pen）支援：pointer 事件
   let penLongPress=null;
+  let penStartX=0,penStartY=0;
   canvas.addEventListener('pointerdown',e=>{
     if(e.pointerType!=='pen'||!drawMode)return;
     e.preventDefault();
+    penStartX=e.clientX;penStartY=e.clientY;
     penLongPress=setTimeout(()=>{
       penLongPress=null;
       deleteLine(canvas,e.clientX,e.clientY);
@@ -791,7 +793,10 @@ function bindDrawEvents(canvasId){
     }
   });
   canvas.addEventListener('pointermove',e=>{
-    if(e.pointerType==='pen'&&penLongPress){clearTimeout(penLongPress);penLongPress=null;}
+    if(e.pointerType==='pen'&&penLongPress){
+      const dist=Math.hypot(e.clientX-penStartX,e.clientY-penStartY);
+      if(dist>8){clearTimeout(penLongPress);penLongPress=null;}
+    }
     if(e.pointerType==='pen'&&drawMode){
       crosshairPos={clientX:e.clientX,clientY:e.clientY};
       redrawLines();
