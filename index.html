@@ -771,6 +771,35 @@ function bindDrawEvents(canvasId){
   canvas.addEventListener('touchmove',e=>{
     if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}
   },{passive:false});
+
+  // Apple Pencil（pen）支援：pointer 事件
+  let penLongPress=null;
+  canvas.addEventListener('pointerdown',e=>{
+    if(e.pointerType!=='pen'||!drawMode)return;
+    e.preventDefault();
+    penLongPress=setTimeout(()=>{
+      penLongPress=null;
+      deleteLine(canvas,e.clientX,e.clientY);
+    },500);
+  });
+  canvas.addEventListener('pointerup',e=>{
+    if(e.pointerType!=='pen'||!drawMode)return;
+    e.preventDefault();
+    if(penLongPress){
+      clearTimeout(penLongPress);penLongPress=null;
+      handleDrawClick(canvas,e.clientX,e.clientY);
+    }
+  });
+  canvas.addEventListener('pointermove',e=>{
+    if(e.pointerType==='pen'&&penLongPress){clearTimeout(penLongPress);penLongPress=null;}
+    if(e.pointerType==='pen'&&drawMode){
+      crosshairPos={clientX:e.clientX,clientY:e.clientY};
+      redrawLines();
+    }
+  });
+  canvas.addEventListener('pointerleave',e=>{
+    if(e.pointerType==='pen'){crosshairPos=null;redrawLines();}
+  });
 }
 
 // ── 圖表重繪時同步更新畫線 canvas 尺寸 ──
