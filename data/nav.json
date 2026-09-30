@@ -975,281 +975,281 @@
     "2025/10/01": 283.48,
     "2025/09/30": 280.95
   },
-  "last_updated": "2026/09/30",
+  "last_updated": "2026/10/01",
   "holdings": {
     "安聯台灣科技": {
-      "date": "2026/07/31",
+      "date": "2026/08/31",
       "data": [
         {
-          "name": "台積電",
-          "pct": 8.22
-        },
-        {
           "name": "旺矽",
-          "pct": 7.61
+          "pct": 6.04
         },
         {
-          "name": "台光電",
-          "pct": 5.64
-        },
-        {
-          "name": "欣興",
-          "pct": 4.52
-        },
-        {
-          "name": "台燿",
-          "pct": 4.26
+          "name": "台積電",
+          "pct": 5.63
         },
         {
           "name": "創意",
-          "pct": 4.22
+          "pct": 5.52
         },
         {
-          "name": "聯電",
-          "pct": 4.17
+          "name": "台光電",
+          "pct": 5.32
+        },
+        {
+          "name": "欣興",
+          "pct": 5.16
         },
         {
           "name": "奇鋐",
-          "pct": 3.89
+          "pct": 4.99
         },
         {
-          "name": "穎崴",
-          "pct": 3.87
+          "name": "金像電",
+          "pct": 4.93
         },
         {
-          "name": "國巨*",
-          "pct": 3.38
+          "name": "台燿",
+          "pct": 4.5
+        },
+        {
+          "name": "南電",
+          "pct": 4.28
+        },
+        {
+          "name": "聯電",
+          "pct": 3.97
         }
       ]
     },
     "安聯台灣大壩": {
-      "date": "2026/07/31",
+      "date": "2026/08/31",
       "data": [
         {
           "name": "旺矽",
-          "pct": 12.74
+          "pct": 8.65
         },
         {
-          "name": "台光電",
-          "pct": 7.07
+          "name": "奇鋐",
+          "pct": 6.44
         },
         {
           "name": "台積電",
-          "pct": 6.31
-        },
-        {
-          "name": "穎崴",
-          "pct": 6.18
-        },
-        {
-          "name": "台燿",
-          "pct": 5.74
+          "pct": 4.87
         },
         {
           "name": "信驊",
-          "pct": 5.55
+          "pct": 4.77
         },
         {
           "name": "欣興",
-          "pct": 4.69
+          "pct": 4.62
         },
         {
           "name": "南電",
+          "pct": 4.11
+        },
+        {
+          "name": "緯穎",
           "pct": 3.71
         },
         {
-          "name": "台達電",
-          "pct": 3.51
+          "name": "創意",
+          "pct": 3.56
         },
         {
-          "name": "智邦",
-          "pct": 3.27
+          "name": "台燿",
+          "pct": 3.55
+        },
+        {
+          "name": "景碩",
+          "pct": 3.52
         }
       ]
     },
     "統一奔騰": {
-      "date": "2026/07/31",
+      "date": "2026/08/31",
       "data": [
         {
           "name": "台光電",
-          "pct": 9.65
-        },
-        {
-          "name": "台積電",
-          "pct": 9.34
-        },
-        {
-          "name": "旺矽",
-          "pct": 7.19
-        },
-        {
-          "name": "欣興",
-          "pct": 7.02
-        },
-        {
-          "name": "聯發科",
-          "pct": 6.74
-        },
-        {
-          "name": "奇鋐",
-          "pct": 6.02
-        },
-        {
-          "name": "智邦",
-          "pct": 5.99
+          "pct": 9.07
         },
         {
           "name": "健策",
-          "pct": 5.39
+          "pct": 8.08
         },
         {
-          "name": "貿聯-KY",
-          "pct": 5.11
+          "name": "台積電",
+          "pct": 7.97
         },
         {
-          "name": "國巨*",
-          "pct": 4.81
+          "name": "奇鋐",
+          "pct": 7.67
+        },
+        {
+          "name": "欣興",
+          "pct": 7.59
+        },
+        {
+          "name": "聯發科",
+          "pct": 5.87
+        },
+        {
+          "name": "旺矽",
+          "pct": 5.7
+        },
+        {
+          "name": "緯穎",
+          "pct": 4.95
+        },
+        {
+          "name": "智邦",
+          "pct": 4.86
+        },
+        {
+          "name": "台達電",
+          "pct": 4.79
         }
       ]
     },
     "統一黑馬": {
-      "date": "2026/07/31",
+      "date": "2026/08/31",
       "data": [
         {
-          "name": "台積電",
-          "pct": 8.15
+          "name": "緯穎",
+          "pct": 7.14
         },
         {
           "name": "台光電",
-          "pct": 7.87
+          "pct": 6.04
         },
         {
-          "name": "奇鋐",
-          "pct": 6.51
+          "name": "台積電",
+          "pct": 5.93
         },
         {
-          "name": "緯穎",
-          "pct": 5.77
+          "name": "富世達",
+          "pct": 5.7
         },
         {
           "name": "欣興",
-          "pct": 4.93
-        },
-        {
-          "name": "聯發科",
-          "pct": 4.39
-        },
-        {
-          "name": "台達電",
-          "pct": 4.31
-        },
-        {
-          "name": "旺矽",
-          "pct": 4.19
+          "pct": 5.02
         },
         {
           "name": "創意",
-          "pct": 3.63
+          "pct": 5.0
         },
         {
-          "name": "南電",
-          "pct": 3.03
+          "name": "奇鋐",
+          "pct": 4.84
+        },
+        {
+          "name": "聯亞",
+          "pct": 4.18
+        },
+        {
+          "name": "南亞科",
+          "pct": 3.51
+        },
+        {
+          "name": "台達電",
+          "pct": 3.43
         }
       ]
     },
     "統一全球新科技": {
-      "date": "2026/07/31",
+      "date": "2026/08/31",
       "data": [
         {
-          "name": "Micron Technology Inc",
-          "pct": 7.61
-        },
-        {
           "name": "ADVANCED MICRO DEVICES.amd us",
-          "pct": 7.43
-        },
-        {
-          "name": "KIOXIA HOLDINGS CORP",
-          "pct": 6.11
-        },
-        {
-          "name": "MURATA MANUFACTURING CO LTD",
-          "pct": 5.36
-        },
-        {
-          "name": "SANDISK CORP",
-          "pct": 5.0
-        },
-        {
-          "name": "BLOOM ENERGY CORP- A",
-          "pct": 4.15
+          "pct": 6.74
         },
         {
           "name": "台光電",
-          "pct": 3.9
+          "pct": 6.66
         },
         {
-          "name": "台積電",
-          "pct": 3.89
+          "name": "BLOOM ENERGY CORP- A",
+          "pct": 5.07
         },
         {
-          "name": "TAIYO YUDEN CO LTD",
-          "pct": 3.65
+          "name": "LUMENTUM HOLDINGS INC",
+          "pct": 4.75
+        },
+        {
+          "name": "PALANTIR TECHNOLOGIES INC-A",
+          "pct": 4.03
         },
         {
           "name": "State Street SPDR標普生技ETF",
-          "pct": 3.6
+          "pct": 3.65
+        },
+        {
+          "name": "CROWDSTRIKE HOLDINGS INC - A",
+          "pct": 3.63
+        },
+        {
+          "name": "ServiceNow Inc",
+          "pct": 3.57
+        },
+        {
+          "name": "Alphabet INC-CL A",
+          "pct": 3.35
+        },
+        {
+          "name": "台積電",
+          "pct": 3.25
         }
       ]
     },
     "安聯台灣智慧": {
-      "date": "2026/07/31",
+      "date": "2026/08/31",
       "data": [
         {
-          "name": "旺矽",
-          "pct": 8.36
+          "name": "南亞科",
+          "pct": 7.32
         },
         {
           "name": "台光電",
-          "pct": 6.99
-        },
-        {
-          "name": "信驊",
-          "pct": 6.54
-        },
-        {
-          "name": "台積電",
-          "pct": 5.99
+          "pct": 7.24
         },
         {
           "name": "華邦電",
+          "pct": 6.99
+        },
+        {
+          "name": "旺矽",
+          "pct": 6.84
+        },
+        {
+          "name": "信驊",
+          "pct": 6.53
+        },
+        {
+          "name": "川湖",
+          "pct": 6.1
+        },
+        {
+          "name": "緯穎",
           "pct": 5.91
         },
         {
-          "name": "南亞科",
-          "pct": 5.45
-        },
-        {
           "name": "欣興",
-          "pct": 4.88
+          "pct": 5.22
         },
         {
           "name": "台燿",
-          "pct": 4.78
+          "pct": 5.21
         },
         {
-          "name": "智邦",
-          "pct": 4.7
-        },
-        {
-          "name": "景碩",
-          "pct": 4.18
+          "name": "奇鋐",
+          "pct": 5.2
         }
       ]
     }
   },
   "holdings_date": "2026/05/08",
-  "holdings_updated": "2026/09",
+  "holdings_updated": "2026/10",
   "00981A": {
     "2026/09/30": 30.58,
     "2026/09/29": 30.37,
